@@ -14,6 +14,7 @@ interface SearchParams {
   q?: string;
   tag?: string;
   arquivadas?: string;
+  linkedin?: string;
 }
 
 export default async function ConstrutorasPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -28,12 +29,15 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
       ? undefined
       : { not: "perdido" };
 
+  const soLinkedin = sp.linkedin === "1";
+
   const construtoras = await prisma.construtora.findMany({
     where: {
       uf: sp.uf || undefined,
       leadStatus: statusFilter,
       faixaFaturamento: sp.faixa || undefined,
       tags: sp.tag ? { contains: `"${sp.tag}"` } : undefined,
+      decisores: soLinkedin ? { some: { linkedinContatado: true } } : undefined,
       OR: sp.q
         ? [
             { razaoSocial: { contains: sp.q } },
@@ -44,6 +48,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
     },
     include: {
       contratos: { select: { valorGlobal: true, tipoObra: true } },
+      decisores: { select: { linkedinContatado: true } },
       _count: { select: { contratos: true, decisores: true } },
     },
     orderBy: { updatedAt: "desc" },
@@ -71,7 +76,17 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
             {!mostrarArquivadas && !sp.status && " · perdidas ocultas"}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href={soLinkedin ? "/construtoras" : "/construtoras?linkedin=1"}
+            className={`px-3 py-2 rounded-md border text-sm font-medium ${
+              soLinkedin
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            in LinkedIn enviado
+          </Link>
           <Link
             href={mostrarArquivadas ? "/construtoras" : "/construtoras?arquivadas=1"}
             className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100"

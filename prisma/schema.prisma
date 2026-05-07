@@ -71,11 +71,13 @@ model Decisor {
   cargo         String?
   email         String?
   telefone      String?
-  linkedin      String?
-  departamento  String?
-  senioridade   String?
-  fonte         String?
-  createdAt     DateTime @default(now())
+  linkedin            String?
+  departamento        String?
+  senioridade         String?
+  fonte               String?
+  linkedinContatado   Boolean  @default(false)
+  linkedinContatadoEm DateTime?
+  createdAt           DateTime @default(now())
 
   construtora Construtora @relation(fields: [construtoraId], references: [id], onDelete: Cascade)
 

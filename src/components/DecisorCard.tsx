@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor } from "@/server-actions/decisores";
+import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor, toggleLinkedinContatado } from "@/server-actions/decisores";
 import { gerarEmailMailto } from "@/lib/email-template";
 
 export interface DecisorView {
@@ -13,6 +13,8 @@ export interface DecisorView {
   linkedin?: string | null;
   senioridade?: string | null;
   fonte?: string | null;
+  linkedinContatado?: boolean;
+  linkedinContatadoEm?: Date | null;
 }
 
 export interface EmpresaCtx {
@@ -34,6 +36,7 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
   const [pending, start] = useTransition();
   const [hunting, setHunting] = useState(false);
   const [huntMsg, setHuntMsg] = useState<string | null>(null);
+  const [liContatado, setLiContatado] = useState(decisor.linkedinContatado ?? false);
 
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`"${decisor.nome}" linkedin`)}`;
   const linkedinSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(decisor.nome)}`;
@@ -89,12 +92,29 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
             )}
           </div>
         </div>
-        <button
-          onClick={() => setEditing((e) => !e)}
-          className="text-xs text-brand-600 hover:underline"
-        >
-          {editing ? "fechar" : "editar"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => start(async () => {
+              await toggleLinkedinContatado(decisor.id);
+              setLiContatado((v) => !v);
+            })}
+            disabled={pending}
+            title={liContatado ? "Clique para desmarcar" : "Marcar como mensagem enviada no LinkedIn"}
+            className={`text-xs px-2 py-0.5 rounded-full border font-medium transition-colors ${
+              liContatado
+                ? "bg-blue-100 border-blue-400 text-blue-700"
+                : "bg-slate-100 border-slate-300 text-slate-500 hover:border-blue-400 hover:text-blue-600"
+            }`}
+          >
+            {liContatado ? "✓ LinkedIn" : "in LinkedIn"}
+          </button>
+          <button
+            onClick={() => setEditing((e) => !e)}
+            className="text-xs text-brand-600 hover:underline"
+          >
+            {editing ? "fechar" : "editar"}
+          </button>
+        </div>
       </div>
 
       <div className="text-xs mt-2 flex flex-wrap gap-2">
