@@ -1,8 +1,20 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { createClient } from "@libsql/client";
 import { importContratos } from "../data-import/import-contratos";
 import { importDecisores } from "../data-import/import-decisores";
 
-const prisma = new PrismaClient();
+function makeClient(): PrismaClient {
+  const tursoUrl = process.env.TURSO_DATABASE_URL;
+  const tursoToken = process.env.TURSO_AUTH_TOKEN;
+  if (tursoUrl) {
+    const libsql = createClient({ url: tursoUrl, authToken: tursoToken });
+    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
+  }
+  return new PrismaClient();
+}
+
+const prisma = makeClient();
 
 async function main() {
   console.log("== EAP CRM | seed ==");

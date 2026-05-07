@@ -63,17 +63,26 @@ Se você quiser que o repo seja totalmente self-contained, copie os CSVs para
 
 ## Deploy
 
-### Vercel (recomendado)
-1. Trocar `DATABASE_URL` para Turso (libSQL): `libsql://<seu-db>.turso.io?authToken=<token>`
-2. No Prisma schema, ajustar `provider = "sqlite"` se usar Turso (driver compatível)
-   ou trocar para `provider = "postgresql"` se usar Neon/Supabase.
-3. Rodar `npx prisma migrate deploy` no build.
-4. Subir.
+### Vercel + Turso (libSQL) — gratuito
 
-### Railway
-- SQLite funciona com volume persistente (`/data/dev.db`), basta apontar o
-  `DATABASE_URL`.
-- Ou subir um Postgres serviço e trocar provider.
+1. **Crie banco no Turso** (<https://turso.tech>): Database → New → região `gru` (SP).
+   Copie a URL (`libsql://...turso.io`) e gere um auth token.
+2. **Localmente, popule o banco Turso uma vez**:
+   ```powershell
+   $env:TURSO_DATABASE_URL = "libsql://<seu-db>.turso.io"
+   $env:TURSO_AUTH_TOKEN   = "<seu-token>"
+   # Cria as tabelas no Turso (db push pula migrations e aplica o schema direto)
+   $env:DATABASE_URL = "$env:TURSO_DATABASE_URL`?authToken=$env:TURSO_AUTH_TOKEN"
+   npx prisma db push
+   # Volta DATABASE_URL p/ o placeholder local e roda seed via adaptador
+   $env:DATABASE_URL = "file:./dev.db"
+   npm run seed
+   ```
+3. **No Vercel** (<https://vercel.com/new>): importe o repo. Em Environment Variables:
+   - `TURSO_DATABASE_URL` = a URL libsql
+   - `TURSO_AUTH_TOKEN` = o token
+   - `DATABASE_URL` = `file:./dev.db` (placeholder, o adaptador toma a frente em runtime)
+4. Deploy.
 
 ## Como o "só dados reais" é garantido
 
