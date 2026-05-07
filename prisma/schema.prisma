@@ -1,8 +1,7 @@
 // Prisma schema — SQLite local; pronto para trocar para Postgres/Turso via DATABASE_URL.
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
