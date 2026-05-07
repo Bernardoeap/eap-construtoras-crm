@@ -28,7 +28,12 @@ export function EnrichAllBtn() {
     setCancelado(false);
 
     start(async () => {
-      const lista: Cnpj[] = await fetch("/api/construtoras/cnpjs").then((r) => r.json());
+      // So pega quem ainda nao foi enriquecido (re-clicar = retry das falhas)
+      const lista: Cnpj[] = await fetch("/api/construtoras/cnpjs?semEnriquecer=1").then((r) => r.json());
+      if (lista.length === 0) {
+        setResumo({ ok: 0, erro: 0, decisoresCriados: 0 });
+        return;
+      }
       let ok = 0;
       let erro = 0;
       let decisoresCriados = 0;
@@ -49,8 +54,8 @@ export function EnrichAllBtn() {
         } catch {
           erro++;
         }
-        // delay anti-rate-limit
-        await new Promise((res) => setTimeout(res, 600));
+        // delay anti-rate-limit (BrasilAPI ~3 req/min na rota gratis)
+        await new Promise((res) => setTimeout(res, 3000));
       }
 
       setProgresso(null);

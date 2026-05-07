@@ -46,18 +46,26 @@ interface CNPJaOpenResponse {
   status?: { text?: string };
 }
 
-async function fetchJSON<T>(url: string, timeoutMs = 15_000): Promise<{ data: T | null; status: number }> {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
-    if (!r.ok) return { data: null, status: r.status };
-    return { data: (await r.json()) as T, status: r.status };
-  } catch {
-    return { data: null, status: 0 };
-  } finally {
-    clearTimeout(t);
+async function fetchJSON<T>(url: string, timeoutMs = 15_000, retries = 2): Promise<{ data: T | null; status: number }> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      const r = await fetch(url, { signal: ctrl.signal, headers: { Accept: "application/json" } });
+      clearTimeout(t);
+      if (r.ok) return { data: (await r.json()) as T, status: r.status };
+      // 429 / 5xx → backoff e tenta de novo
+      if ((r.status === 429 || r.status >= 500) && attempt < retries) {
+        await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
+        continue;
+      }
+      return { data: null, status: r.status };
+    } catch {
+      clearTimeout(t);
+      if (attempt < retries) await new Promise((res) => setTimeout(res, 2000 * (attempt + 1)));
+    }
   }
+  return { data: null, status: 0 };
 }
 
 function mapCnpjaToBrasilApi(d: CNPJaOpenResponse): BrasilApiCNPJ {

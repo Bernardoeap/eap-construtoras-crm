@@ -50,9 +50,14 @@ export default async function SyncPage() {
       <section className="bg-white border rounded-lg p-5 space-y-3">
         <h2 className="font-semibold">Enriquecer todas as construtoras (BrasilAPI)</h2>
         <p className="text-sm text-slate-600">
-          Itera sobre todas as construtoras não-arquivadas. Pra cada uma: puxa razão social, sócios (QSA),
-          CNAE, capital, e-mail/telefone direto da Receita Federal. Sócios viram Decisores
-          automaticamente. Roda no seu navegador (não trava o servidor). Pode usar outras abas enquanto roda.
+          Pra cada construtora não-enriquecida: puxa razão social, sócios (QSA), CNAE, capital,
+          e-mail/telefone direto da Receita Federal. Sócios viram Decisores automaticamente. Re-clicar
+          tenta apenas as que ainda faltam (não retrabalha as já feitas).
+        </p>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+          ⚠ BrasilAPI tem rate limit (~3 req/min). Delay configurado em 3 segundos entre chamadas. Para 100
+          construtoras leva ~5 min. Se ainda assim falhar, espera 1 min e clica de novo — vai tentar só as
+          que faltam.
         </p>
         <EnrichAllBtn />
       </section>
