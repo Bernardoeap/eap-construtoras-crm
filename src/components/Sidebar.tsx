@@ -4,7 +4,6 @@ const NAV = [
   { href: "/", label: "Dashboard", icon: "□" },
   { href: "/construtoras", label: "Construtoras", icon: "▦" },
   { href: "/relatorios", label: "Relatórios", icon: "◷" },
-  { href: "/triagem", label: "Triagem", icon: "⚙" },
   { href: "/sync", label: "Atualizar (PNCP)", icon: "↻" },
 ];
 

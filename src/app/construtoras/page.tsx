@@ -20,16 +20,20 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
   const sp = await searchParams;
   const mostrarArquivadas = sp.arquivadas === "1";
 
+  // Por padrao esconde quem esta marcado como 'perdido' (= arquivado).
+  // Se o usuario filtrou por um status especifico, respeita o filtro dele.
+  const statusFilter = sp.status
+    ? sp.status
+    : mostrarArquivadas
+      ? undefined
+      : { not: "perdido" };
+
   const construtoras = await prisma.construtora.findMany({
     where: {
       uf: sp.uf || undefined,
-      leadStatus: sp.status || undefined,
+      leadStatus: statusFilter,
       faixaFaturamento: sp.faixa || undefined,
-      tags: sp.tag
-        ? { contains: `"${sp.tag}"` }
-        : mostrarArquivadas
-          ? undefined
-          : { not: { contains: '"fora-do-icp"' } },
+      tags: sp.tag ? { contains: `"${sp.tag}"` } : undefined,
       OR: sp.q
         ? [
             { razaoSocial: { contains: sp.q } },
@@ -64,7 +68,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
           <h1 className="text-2xl font-bold">Construtoras</h1>
           <p className="text-sm text-slate-500">
             {filtered.length} construtoras na visão atual
-            {!mostrarArquivadas && " · arquivadas (fora-do-icp) ocultas"}
+            {!mostrarArquivadas && !sp.status && " · perdidas ocultas"}
           </p>
         </div>
         <div className="flex gap-2">
@@ -72,10 +76,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
             href={mostrarArquivadas ? "/construtoras" : "/construtoras?arquivadas=1"}
             className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100"
           >
-            {mostrarArquivadas ? "Esconder arquivadas" : "Mostrar arquivadas"}
-          </Link>
-          <Link href="/triagem" className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100">
-            ⚙ Triagem
+            {mostrarArquivadas ? "Esconder perdidas" : "Mostrar perdidas"}
           </Link>
           <Link href="/sync" className="px-4 py-2 rounded-md bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
             ↻ Atualizar (PNCP)
