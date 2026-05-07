@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { fetchContratos, formatCNPJ, pncpDateToISO } from "@/lib/pncp";
-import { classificarTipoObra, pareceConstrutora } from "@/lib/classify";
+import { classificarTipoObra, pareceConstrutora, razaoForaIcp, objetoEhObra } from "@/lib/classify";
 
 const Body = z.object({
   ufs: z.array(z.string().length(2)).min(1),
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   let novos = 0;
   let atualizados = 0;
+  let descartados = 0;
   let mensagem = "";
 
   try {
@@ -69,6 +70,19 @@ export async function POST(req: NextRequest) {
       const razao = item.nomeRazaoSocialFornecedor?.trim() ?? "";
       const numeroControle = item.numeroControlePNCP;
       if (!cnpj || !razao || !numeroControle) continue;
+
+      // Filtros de ICP: descarta o que claramente nao e construtora de obras
+      const objText = item.objetoContrato ?? "";
+      const eObra = objetoEhObra(objText);
+      const foraIcp = razaoForaIcp(razao);
+      if (foraIcp && !eObra) {
+        descartados++;
+        continue;
+      }
+      if (!eObra && !pareceConstrutora(razao, null)) {
+        descartados++;
+        continue;
+      }
 
       const uf = item.unidadeOrgao?.ufSigla ?? "";
       const ehConstrutora = pareceConstrutora(razao, null);
@@ -113,7 +127,7 @@ export async function POST(req: NextRequest) {
       novos++;
     }
 
-    mensagem = `OK · ${contratos.length} retornados pela API · ${novos} novos · ${atualizados} já existentes`;
+    mensagem = `OK · ${contratos.length} retornados · ${novos} novos · ${atualizados} já existentes · ${descartados} fora do ICP`;
   } catch (e) {
     mensagem = `ERRO: ${String(e)}`;
     await prisma.syncLog.update({
@@ -128,5 +142,5 @@ export async function POST(req: NextRequest) {
     data: { status: "ok", finalizadoEm: new Date(), mensagem, registrosNovos: novos, registrosAtualizados: atualizados },
   });
 
-  return NextResponse.json({ ok: true, novos, atualizados, mensagem });
+  return NextResponse.json({ ok: true, novos, atualizados, descartados, mensagem });
 }

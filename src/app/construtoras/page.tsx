@@ -13,17 +13,23 @@ interface SearchParams {
   faixa?: string;
   q?: string;
   tag?: string;
+  arquivadas?: string;
 }
 
 export default async function ConstrutorasPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
+  const mostrarArquivadas = sp.arquivadas === "1";
 
   const construtoras = await prisma.construtora.findMany({
     where: {
       uf: sp.uf || undefined,
       leadStatus: sp.status || undefined,
       faixaFaturamento: sp.faixa || undefined,
-      tags: sp.tag ? { contains: `"${sp.tag}"` } : undefined,
+      tags: sp.tag
+        ? { contains: `"${sp.tag}"` }
+        : mostrarArquivadas
+          ? undefined
+          : { not: { contains: '"fora-do-icp"' } },
       OR: sp.q
         ? [
             { razaoSocial: { contains: sp.q } },
@@ -56,11 +62,25 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
       <header className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Construtoras</h1>
-          <p className="text-sm text-slate-500">{filtered.length} construtoras na visão atual</p>
+          <p className="text-sm text-slate-500">
+            {filtered.length} construtoras na visão atual
+            {!mostrarArquivadas && " · arquivadas (fora-do-icp) ocultas"}
+          </p>
         </div>
-        <Link href="/sync" className="px-4 py-2 rounded-md bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
-          ↻ Atualizar (PNCP)
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href={mostrarArquivadas ? "/construtoras" : "/construtoras?arquivadas=1"}
+            className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100"
+          >
+            {mostrarArquivadas ? "Esconder arquivadas" : "Mostrar arquivadas"}
+          </Link>
+          <Link href="/triagem" className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100">
+            ⚙ Triagem
+          </Link>
+          <Link href="/sync" className="px-4 py-2 rounded-md bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
+            ↻ Atualizar (PNCP)
+          </Link>
+        </div>
       </header>
 
       <form className="bg-white border rounded-lg p-4 grid grid-cols-2 md:grid-cols-6 gap-3" action="/construtoras" method="get">
