@@ -1,11 +1,20 @@
 import { prisma } from "@/lib/db";
 import { SyncForm } from "@/components/SyncForm";
 import { RecalcFaturamentoBtn } from "@/components/RecalcFaturamentoBtn";
+import { EnrichAllBtn } from "@/components/EnrichAllBtn";
 
 export const dynamic = "force-dynamic";
 
 export default async function SyncPage() {
-  const logs = await prisma.syncLog.findMany({ orderBy: { iniciadoEm: "desc" }, take: 20 });
+  const [logs, totalDecisoresComTel] = await Promise.all([
+    prisma.syncLog.findMany({ orderBy: { iniciadoEm: "desc" }, take: 20 }),
+    prisma.decisor.count({
+      where: {
+        telefone: { not: null },
+        construtora: { leadStatus: { not: "perdido" } },
+      },
+    }),
+  ]);
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -23,13 +32,46 @@ export default async function SyncPage() {
       </section>
 
       <section className="bg-white border rounded-lg p-5 space-y-3">
+        <h2 className="font-semibold">Enriquecer todas as construtoras (BrasilAPI)</h2>
+        <p className="text-sm text-slate-600">
+          Itera sobre todas as construtoras não-arquivadas. Pra cada uma: puxa razão social, sócios (QSA),
+          CNAE, capital, e-mail/telefone direto da Receita Federal. Sócios viram Decisores
+          automaticamente. Roda no seu navegador (não trava o servidor). Pode usar outras abas enquanto roda.
+        </p>
+        <EnrichAllBtn />
+      </section>
+
+      <section className="bg-white border rounded-lg p-5 space-y-3">
         <h2 className="font-semibold">Recalcular faturamento estimado</h2>
         <p className="text-sm text-slate-600">
           Aplica a heurística (porte Receita + contratos PNCP 24m + capital social) em todas as
-          construtoras. Não chama API externa — roda em segundos. Pra ter o porte da Receita salvo, clique
-          em "Enriquecer" em cada construtora antes (ou só rode isso aqui pra estimar com contratos+capital).
+          construtoras. Não chama API externa — roda em segundos. Use depois do enriquecimento para o porte
+          ser considerado.
         </p>
         <RecalcFaturamentoBtn />
+      </section>
+
+      <section className="bg-white border rounded-lg p-5 space-y-3">
+        <h2 className="font-semibold">Exportar CSV de decisores (3C+)</h2>
+        <p className="text-sm text-slate-600">
+          Gera um CSV com todos os decisores que <strong>têm telefone preenchido</strong> ({totalDecisoresComTel}{" "}
+          atualmente), prontos para importar no 3C+ ou outro discador. Colunas: nome, cargo, telefone,
+          e-mail, LinkedIn, empresa, CNPJ, UF, valor total em contratos (R$ mi), contratos ativos, contratos
+          totais.
+        </p>
+        <a
+          href="/api/export/decisores"
+          download
+          className="inline-block px-5 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+        >
+          📥 Baixar CSV ({totalDecisoresComTel} decisores)
+        </a>
+        {totalDecisoresComTel === 0 && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+            ⚠ Ainda não há decisores com telefone. Edite cada decisor na página da construtora pra adicionar
+            telefone (botão "editar" ao lado do nome), ou use o enriquecimento acima primeiro.
+          </p>
+        )}
       </section>
 
       <section className="bg-white border rounded-lg p-5">
