@@ -53,9 +53,9 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
       const json = await res.json();
       if (json.found) {
         setEmail(json.email);
-        setHuntMsg(`✓ ${json.email} (score ${json.score})`);
+        setHuntMsg(`✓ ${json.email} via ${json.fonte} (score ${json.score})`);
       } else {
-        setHuntMsg("Não encontrado");
+        setHuntMsg("Não encontrado em nenhuma base");
       }
     } catch {
       setHuntMsg("Erro ao buscar");
