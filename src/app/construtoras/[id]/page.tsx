@@ -29,6 +29,25 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
   const tags: string[] = c.tags ? JSON.parse(c.tags) : [];
   const qsa: Array<{ nome_socio?: string; qualificacao_socio?: string }> = c.qsa ? JSON.parse(c.qsa) : [];
 
+  // Maior contrato (preferindo ativos) — usado como gancho dos e-mails
+  const agora = new Date();
+  const ativos = c.contratos.filter((ct) => !ct.vigenciaFim || ct.vigenciaFim >= agora);
+  const ordenados = (ativos.length > 0 ? ativos : c.contratos).slice().sort(
+    (a, b) => (b.valorGlobal ?? 0) - (a.valorGlobal ?? 0)
+  );
+  const contratoPrincipal = ordenados[0] ?? null;
+  const empresaCtx = {
+    razaoSocial: c.razaoSocial,
+    contratoPrincipal: contratoPrincipal
+      ? {
+          objeto: contratoPrincipal.objeto,
+          orgaoContratante: contratoPrincipal.orgaoContratante,
+          municipio: contratoPrincipal.municipio,
+          valorGlobal: contratoPrincipal.valorGlobal,
+        }
+      : null,
+  };
+
   return (
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
@@ -137,7 +156,7 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
           <h2 className="font-semibold mb-3">Decisores ({c.decisores.length})</h2>
           <ul className="divide-y">
             {c.decisores.map((d) => (
-              <DecisorCard key={d.id} decisor={d} />
+              <DecisorCard key={d.id} decisor={d} empresa={empresaCtx} />
             ))}
             {c.decisores.length === 0 && (
               <li className="py-4 text-center text-sm text-slate-500">

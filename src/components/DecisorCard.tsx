@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor } from "@/server-actions/decisores";
+import { gerarEmailMailto } from "@/lib/email-template";
 
 export interface DecisorView {
   id: string;
@@ -14,7 +15,17 @@ export interface DecisorView {
   fonte?: string | null;
 }
 
-export function DecisorCard({ decisor }: { decisor: DecisorView }) {
+export interface EmpresaCtx {
+  razaoSocial: string;
+  contratoPrincipal?: {
+    objeto?: string | null;
+    orgaoContratante?: string | null;
+    municipio?: string | null;
+    valorGlobal?: number | null;
+  } | null;
+}
+
+export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empresa?: EmpresaCtx }) {
   const [linkedin, setLinkedin] = useState(decisor.linkedin ?? "");
   const [email, setEmail] = useState(decisor.email ?? "");
   const [telefone, setTelefone] = useState(decisor.telefone ?? "");
@@ -66,9 +77,30 @@ export function DecisorCard({ decisor }: { decisor: DecisorView }) {
 
       <div className="text-xs mt-2 flex flex-wrap gap-2">
         {decisor.email && (
-          <a href={`mailto:${decisor.email}`} className="text-brand-600 hover:underline">
-            ✉ {decisor.email}
-          </a>
+          <>
+            <a href={`mailto:${decisor.email}`} className="text-brand-600 hover:underline">
+              ✉ {decisor.email}
+            </a>
+            {empresa && (
+              <a
+                href={
+                  gerarEmailMailto({
+                    nome: decisor.nome,
+                    empresa: empresa.razaoSocial,
+                    email: decisor.email,
+                    contratoObjeto: empresa.contratoPrincipal?.objeto ?? null,
+                    contratoOrgao: empresa.contratoPrincipal?.orgaoContratante ?? null,
+                    contratoMunicipio: empresa.contratoPrincipal?.municipio ?? null,
+                    contratoValor: empresa.contratoPrincipal?.valorGlobal ?? null,
+                  }).url
+                }
+                className="text-emerald-700 font-medium hover:underline"
+                title="Abre Gmail/cliente de e-mail com modelo já preenchido"
+              >
+                📧 Compor e-mail
+              </a>
+            )}
+          </>
         )}
         {decisor.telefone && (
           <a href={`tel:${decisor.telefone}`} className="text-brand-600 hover:underline">
