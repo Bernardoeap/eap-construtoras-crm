@@ -136,6 +136,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
               <th className="px-4 py-3 font-medium">UF</th>
               <th className="px-4 py-3 font-medium">Contratos</th>
               <th className="px-4 py-3 font-medium">Valor total</th>
+              <th className="px-4 py-3 font-medium">Faixa estimada</th>
               <th className="px-4 py-3 font-medium">Decisores</th>
               <th className="px-4 py-3 font-medium">Status</th>
             </tr>
@@ -154,6 +155,11 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
                   <td className="px-4 py-3">{c.uf}</td>
                   <td className="px-4 py-3">{c._count.contratos}</td>
                   <td className="px-4 py-3 font-mono">{formatBRL(valor)}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {c.faixaFaturamento
+                      ? FAIXAS_LABEL[c.faixaFaturamento as keyof typeof FAIXAS_LABEL] ?? c.faixaFaturamento
+                      : "—"}
+                  </td>
                   <td className="px-4 py-3">{c._count.decisores}</td>
                   <td className="px-4 py-3">
                     <StatusBadge status={c.leadStatus} />
@@ -163,7 +169,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
                   Nenhuma construtora encontrada com esses filtros.
                 </td>
               </tr>

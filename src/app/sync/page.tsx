@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { SyncForm } from "@/components/SyncForm";
+import { RecalcFaturamentoBtn } from "@/components/RecalcFaturamentoBtn";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,16 @@ export default async function SyncPage() {
 
       <section className="bg-white border rounded-lg p-5">
         <SyncForm />
+      </section>
+
+      <section className="bg-white border rounded-lg p-5 space-y-3">
+        <h2 className="font-semibold">Recalcular faturamento estimado</h2>
+        <p className="text-sm text-slate-600">
+          Aplica a heurística (porte Receita + contratos PNCP 24m + capital social) em todas as
+          construtoras. Não chama API externa — roda em segundos. Pra ter o porte da Receita salvo, clique
+          em "Enriquecer" em cada construtora antes (ou só rode isso aqui pra estimar com contratos+capital).
+        </p>
+        <RecalcFaturamentoBtn />
       </section>
 
       <section className="bg-white border rounded-lg p-5">

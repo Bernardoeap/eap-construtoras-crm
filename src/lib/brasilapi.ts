@@ -9,6 +9,8 @@ export interface BrasilApiCNPJ {
   cnae_fiscal_descricao?: string;
   cnaes_secundarios?: Array<{ codigo: number; descricao: string }>;
   capital_social?: number | string;
+  porte?: string; // codigo Receita: "01"=MEI, "03"=ME, "05"=EPP, etc.
+  descricao_porte?: string; // "MEI", "ME", "EPP", "DEMAIS"
   email?: string;
   ddd_telefone_1?: string;
   ddd_telefone_2?: string;
@@ -29,7 +31,12 @@ export interface BrasilApiCNPJ {
 
 interface CNPJaOpenResponse {
   taxId: string;
-  company?: { name?: string; members?: Array<{ person?: { name?: string }; role?: { text?: string } }> };
+  company?: {
+    name?: string;
+    members?: Array<{ person?: { name?: string }; role?: { text?: string } }>;
+    size?: { text?: string; acronym?: string };
+    equity?: number;
+  };
   alias?: string;
   mainActivity?: { id?: number; text?: string };
   sideActivities?: Array<{ id?: number; text?: string }>;
@@ -63,6 +70,8 @@ function mapCnpjaToBrasilApi(d: CNPJaOpenResponse): BrasilApiCNPJ {
     cnae_fiscal: d.mainActivity?.id,
     cnae_fiscal_descricao: d.mainActivity?.text,
     cnaes_secundarios: d.sideActivities?.map((a) => ({ codigo: a.id ?? 0, descricao: a.text ?? "" })),
+    capital_social: d.company?.equity,
+    descricao_porte: d.company?.size?.acronym ?? d.company?.size?.text,
     email: d.emails?.[0]?.address,
     ddd_telefone_1: phone1 ? `(${phone1.area}) ${phone1.number}` : undefined,
     ddd_telefone_2: phone2 ? `(${phone2.area}) ${phone2.number}` : undefined,

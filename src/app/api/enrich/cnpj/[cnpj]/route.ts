@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { enrichCNPJ } from "@/lib/brasilapi";
+import { estimarFaturamento } from "@/lib/classify";
 
 export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: string }> }) {
   const { cnpj: raw } = await ctx.params;
@@ -16,6 +17,25 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: str
   const cnaesSec = JSON.stringify(data.cnaes_secundarios ?? []);
   const qsa = JSON.stringify(data.qsa ?? []);
   const capital = typeof data.capital_social === "string" ? Number(data.capital_social) : data.capital_social;
+  const capitalNum = Number.isFinite(capital as number) ? (capital as number) : construtora.capitalSocial;
+
+  // Soma dos contratos PNCP nos ultimos 24 meses (proxy de receita publica anual)
+  const desde24m = new Date();
+  desde24m.setMonth(desde24m.getMonth() - 24);
+  const aggContratos = await prisma.contrato.aggregate({
+    where: {
+      construtoraId: construtora.id,
+      OR: [{ vigenciaInicio: { gte: desde24m } }, { vigenciaInicio: null }],
+    },
+    _sum: { valorGlobal: true },
+  });
+  const somaContratos24m = aggContratos._sum.valorGlobal ?? 0;
+
+  const { valor: faturamentoEstimado, faixa: faixaFaturamento } = estimarFaturamento({
+    porte: data.descricao_porte ?? null,
+    somaContratos24m,
+    capitalSocial: capitalNum,
+  });
 
   await prisma.construtora.update({
     where: { cnpj },
@@ -26,7 +46,9 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: str
       cidade: data.municipio || construtora.cidade,
       cnaePrincipal: data.cnae_fiscal ? String(data.cnae_fiscal) : construtora.cnaePrincipal,
       cnaesSecundarios: cnaesSec,
-      capitalSocial: Number.isFinite(capital as number) ? (capital as number) : construtora.capitalSocial,
+      capitalSocial: capitalNum,
+      faturamentoEstimado,
+      faixaFaturamento,
       qsa,
       email: data.email || construtora.email,
       telefone: telefones || construtora.telefone,

@@ -73,6 +73,53 @@ export function classificarFaixaFaturamento(valorAcumulado: number | null | unde
   return "mega";
 }
 
+// Heuristica de faturamento anual estimado.
+// Combina: porte da Receita (CAP duro p/ ME e EPP), soma de contratos PNCP nos
+// ultimos 24 meses (anualizada e ajustada por receita privada), e capital social
+// (proxy fraco, usado como piso).
+export function estimarFaturamento(opts: {
+  porte?: string | null; // "ME" | "EPP" | "DEMAIS" | "MEI"
+  somaContratos24m?: number | null; // BRL
+  capitalSocial?: number | null; // BRL
+}): { valor: number | null; faixa: FaixaFaturamento | null; explicacao: string } {
+  const porte = (opts.porte ?? "").toUpperCase();
+  const soma = opts.somaContratos24m ?? 0;
+  const capital = opts.capitalSocial ?? 0;
+
+  // PNCP: soma de 24 meses / 2 = receita publica anual; * 1,5 cobre receita privada (assume ~2/3 publico)
+  const dePNCP = soma > 0 ? (soma / 2) * 1.5 : 0;
+
+  // Capital social como piso fraco (~5x capital declarado e tipico de construtora ativa)
+  const deCapital = capital > 0 ? capital * 5 : 0;
+
+  let valor = Math.max(dePNCP, deCapital);
+
+  // Caps duros por porte (oficial Receita)
+  let cap: number | null = null;
+  if (porte === "MEI") cap = 81_000;
+  else if (porte === "ME") cap = 360_000;
+  else if (porte === "EPP") cap = 4_800_000;
+  // "DEMAIS": sem cap (>R$4,8mi, vai do que a heuristica disser)
+
+  if (cap !== null) valor = Math.min(valor || cap, cap);
+
+  if (valor <= 0) {
+    return { valor: null, faixa: null, explicacao: "sem dados suficientes" };
+  }
+
+  // Monta string explicativa
+  const partes: string[] = [];
+  if (porte) partes.push(`porte Receita: ${porte}`);
+  if (dePNCP > 0) partes.push(`contratos PNCP 24m → ~${(dePNCP / 1_000_000).toFixed(1)}mi/ano`);
+  if (deCapital > 0) partes.push(`capital social → piso ~${(deCapital / 1_000_000).toFixed(1)}mi`);
+
+  return {
+    valor,
+    faixa: classificarFaixaFaturamento(valor),
+    explicacao: partes.join(" · "),
+  };
+}
+
 export const FAIXAS_LABEL: Record<FaixaFaturamento, string> = {
   pequena: "Pequena (< R$ 10mi)",
   media: "Média (R$ 10–50mi)",
