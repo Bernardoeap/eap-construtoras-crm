@@ -140,6 +140,7 @@ export const TIPO_OBRA_LABEL: Record<TipoObra, string> = {
 
 export const STATUS_ORDEM = [
   "novo",
+  "sem_linkedin",
   "contatado",
   "qualificado",
   "reuniao_marcada",
@@ -150,6 +151,7 @@ export const STATUS_ORDEM = [
 
 export const STATUS_LABEL: Record<string, string> = {
   novo: "Novo",
+  sem_linkedin: "Sem LinkedIn",
   contatado: "Contatado",
   qualificado: "Qualificado",
   reuniao_marcada: "Reunião marcada",
@@ -160,6 +162,7 @@ export const STATUS_LABEL: Record<string, string> = {
 
 export const STATUS_COLOR: Record<string, string> = {
   novo: "bg-slate-200 text-slate-800",
+  sem_linkedin: "bg-zinc-200 text-zinc-700",
   contatado: "bg-blue-100 text-blue-800",
   qualificado: "bg-amber-100 text-amber-800",
   reuniao_marcada: "bg-purple-100 text-purple-800",
