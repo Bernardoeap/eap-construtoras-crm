@@ -58,8 +58,8 @@ export function gerarEmailMailto(c: EmailContext): { url: string; assunto: strin
 
   const corpo = linhas.join("\n");
 
-  const params = `subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
-  const url = `mailto:${encodeURIComponent(c.email)}?${params}`;
+  const params = new URLSearchParams({ view: "cm", fs: "1", to: c.email, su: assunto, body: corpo });
+  const url = `https://mail.google.com/mail/?${params.toString()}`;
 
   return { url, assunto, corpo };
 }
