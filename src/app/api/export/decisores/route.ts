@@ -1,9 +1,5 @@
-// Export CSV de decisores com telefone para uso em discadores tipo 3C+.
-// Colunas: nome, cargo, telefone, empresa, CNPJ, UF, total em contratos (R$ mi),
-// quantidade de contratos ativos.
-// Inclui apenas decisores com telefone preenchido e construtoras nao-perdidas.
-
 import { prisma } from "@/lib/db";
+import { TIPO_OBRA_LABEL } from "@/lib/classify";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +28,7 @@ export async function GET() {
               objeto: true,
               orgaoContratante: true,
               municipio: true,
+              tipoObra: true,
             },
             orderBy: { valorGlobal: "desc" },
           },
@@ -42,12 +39,13 @@ export async function GET() {
   });
 
   const header = [
-    "nome",
-    "cargo",
+    "nome_decisor",
+    "empresa",
+    "tipo_obra",
     "telefone",
+    "cargo",
     "email",
     "linkedin",
-    "empresa",
     "cnpj",
     "uf",
     "valor_total_contratos_mi",
@@ -67,8 +65,10 @@ export async function GET() {
     const ativos = contratos.filter((c) => !c.vigenciaFim || c.vigenciaFim >= agora);
     const valorMi = (totalValor / 1_000_000).toFixed(2).replace(".", ",");
 
-    // Maior contrato ativo (ja vem ordenado por valor desc); se nao tiver ativo, pega o maior dos totais
     const principal = ativos[0] ?? contratos[0] ?? null;
+    const tipoObraLabel = principal?.tipoObra
+      ? (TIPO_OBRA_LABEL[principal.tipoObra as keyof typeof TIPO_OBRA_LABEL] ?? principal.tipoObra)
+      : "";
     const objetoPrincipal = principal?.objeto?.replace(/\s+/g, " ").trim().slice(0, 500) ?? "";
     const orgaoPrincipal = principal?.orgaoContratante ?? "";
     const municipioPrincipal = principal?.municipio ?? "";
@@ -79,11 +79,12 @@ export async function GET() {
     linhas.push(
       [
         csvEscape(d.nome),
-        csvEscape(d.cargo),
+        csvEscape(d.construtora.razaoSocial),
+        csvEscape(tipoObraLabel),
         csvEscape(d.telefone),
+        csvEscape(d.cargo),
         csvEscape(d.email),
         csvEscape(d.linkedin),
-        csvEscape(d.construtora.razaoSocial),
         csvEscape(d.construtora.cnpj),
         csvEscape(d.construtora.uf),
         csvEscape(valorMi),
