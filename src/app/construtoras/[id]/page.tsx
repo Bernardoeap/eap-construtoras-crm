@@ -38,6 +38,7 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
   const contratoPrincipal = ordenados[0] ?? null;
   const empresaCtx = {
     razaoSocial: c.razaoSocial,
+    site: c.site,
     contratoPrincipal: contratoPrincipal
       ? {
           objeto: contratoPrincipal.objeto,

@@ -17,6 +17,7 @@ export interface DecisorView {
 
 export interface EmpresaCtx {
   razaoSocial: string;
+  site?: string | null;
   contratoPrincipal?: {
     objeto?: string | null;
     orgaoContratante?: string | null;
@@ -31,6 +32,8 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
   const [telefone, setTelefone] = useState(decisor.telefone ?? "");
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
+  const [hunting, setHunting] = useState(false);
+  const [huntMsg, setHuntMsg] = useState<string | null>(null);
 
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`"${decisor.nome}" linkedin`)}`;
   const linkedinSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(decisor.nome)}`;
@@ -41,6 +44,25 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
         ? linkedin
         : `https://${linkedin}`
       : null;
+
+  async function huntEmail() {
+    setHunting(true);
+    setHuntMsg(null);
+    try {
+      const res = await fetch(`/api/decisores/${decisor.id}/find-email`, { method: "POST" });
+      const json = await res.json();
+      if (json.found) {
+        setEmail(json.email);
+        setHuntMsg(`✓ ${json.email} (score ${json.score})`);
+      } else {
+        setHuntMsg("Não encontrado");
+      }
+    } catch {
+      setHuntMsg("Erro ao buscar");
+    } finally {
+      setHunting(false);
+    }
+  }
 
   function save() {
     start(async () => {
@@ -138,7 +160,30 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
       {editing && (
         <div className="mt-2 space-y-2 bg-slate-50 border rounded p-2">
           <Field label="LinkedIn URL" value={linkedin} setValue={setLinkedin} placeholder="https://linkedin.com/in/..." />
-          <Field label="E-mail" value={email} setValue={setEmail} placeholder="nome@empresa.com.br" />
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500">E-mail</span>
+              <button
+                type="button"
+                onClick={huntEmail}
+                disabled={hunting}
+                className="text-[10px] px-2 py-0.5 rounded bg-amber-50 border border-amber-300 text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+              >
+                {hunting ? "Buscando…" : "🔍 Buscar via Hunter.io"}
+              </button>
+              {huntMsg && (
+                <span className={`text-[10px] ${huntMsg.startsWith("✓") ? "text-emerald-700" : "text-slate-500"}`}>
+                  {huntMsg}
+                </span>
+              )}
+            </div>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="nome@empresa.com.br"
+              className="w-full px-2 py-1 border rounded text-xs"
+            />
+          </div>
           <Field label="Telefone" value={telefone} setValue={setTelefone} placeholder="+55 11 9..." />
           <div className="flex gap-2 pt-1">
             <button
