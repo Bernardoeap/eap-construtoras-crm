@@ -21,8 +21,18 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
 
-  const googleQuery = encodeURIComponent(`"${decisor.nome}" "${empresa}" site:linkedin.com/in/`);
+  // Pega so a primeira parte significativa do nome da empresa
+  const empresaCurta = empresa
+    .split(/[-,/]/)[0]
+    .replace(/\b(LTDA|S\.?A\.?|ME|EIRELI|EPP|S\/?A)\b\.?/gi, "")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .join(" ");
+
+  const googleQuery = encodeURIComponent(`"${decisor.nome}" linkedin ${empresaCurta}`);
   const googleUrl = `https://www.google.com/search?q=${googleQuery}`;
+  const linkedinSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(decisor.nome + " " + empresaCurta)}`;
 
   const linkedinUrl =
     linkedin && linkedin.length > 0
@@ -80,15 +90,26 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
             in/ LinkedIn ↗
           </a>
         ) : (
-          <a
-            href={googleUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-slate-600 hover:text-brand-600 hover:underline"
-            title="Abre o Google buscando o LinkedIn dessa pessoa nessa empresa"
-          >
-            🔍 Buscar LinkedIn
-          </a>
+          <>
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-600 hover:text-brand-600 hover:underline"
+              title="Busca no Google"
+            >
+              🔍 Google
+            </a>
+            <a
+              href={linkedinSearchUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-600 hover:text-brand-600 hover:underline"
+              title="Busca direto no LinkedIn (precisa estar logado)"
+            >
+              in/ LinkedIn search
+            </a>
+          </>
         )}
       </div>
 
