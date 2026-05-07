@@ -7,10 +7,15 @@ import { importDecisores } from "../data-import/import-decisores";
 function makeClient(): PrismaClient {
   const tursoUrl = process.env.TURSO_DATABASE_URL;
   const tursoToken = process.env.TURSO_AUTH_TOKEN;
+  console.log(`[seed] TURSO_DATABASE_URL = ${tursoUrl ? tursoUrl.slice(0, 50) + "..." : "(nao setada)"}`);
+  console.log(`[seed] TURSO_AUTH_TOKEN   = ${tursoToken ? "(setado, " + tursoToken.length + " chars)" : "(nao setado)"}`);
+  console.log(`[seed] DATABASE_URL       = ${process.env.DATABASE_URL ?? "(nao setado)"}`);
   if (tursoUrl) {
+    console.log("[seed] → conectando ao Turso via libSQL adapter");
     const libsql = createClient({ url: tursoUrl, authToken: tursoToken });
     return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
   }
+  console.log("[seed] → conectando via DATABASE_URL (SQLite local)");
   return new PrismaClient();
 }
 
