@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx prisma/seed.ts",
+    "db:push:turso": "tsx scripts/turso-push.ts",
     "db:migrate": "prisma migrate dev --name init",
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio"

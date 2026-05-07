@@ -71,11 +71,12 @@ Se você quiser que o repo seja totalmente self-contained, copie os CSVs para
    ```powershell
    $env:TURSO_DATABASE_URL = "libsql://<seu-db>.turso.io"
    $env:TURSO_AUTH_TOKEN   = "<seu-token>"
-   # Cria as tabelas no Turso (db push pula migrations e aplica o schema direto)
-   $env:DATABASE_URL = "$env:TURSO_DATABASE_URL`?authToken=$env:TURSO_AUTH_TOKEN"
-   npx prisma db push
-   # Volta DATABASE_URL p/ o placeholder local e roda seed via adaptador
    $env:DATABASE_URL = "file:./dev.db"
+
+   # Cria as tabelas no Turso (script aplica o schema via libsql client)
+   npm run db:push:turso
+
+   # Importa CSVs (Prisma usa o adaptador libsql automaticamente)
    npm run seed
    ```
 3. **No Vercel** (<https://vercel.com/new>): importe o repo. Em Environment Variables:
