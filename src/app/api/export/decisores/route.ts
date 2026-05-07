@@ -26,7 +26,14 @@ export async function GET() {
       construtora: {
         include: {
           contratos: {
-            select: { valorGlobal: true, vigenciaFim: true },
+            select: {
+              valorGlobal: true,
+              vigenciaFim: true,
+              objeto: true,
+              orgaoContratante: true,
+              municipio: true,
+            },
+            orderBy: { valorGlobal: "desc" },
           },
         },
       },
@@ -46,6 +53,10 @@ export async function GET() {
     "valor_total_contratos_mi",
     "qtd_contratos_ativos",
     "qtd_contratos_total",
+    "objeto_principal",
+    "orgao_principal",
+    "municipio_principal",
+    "valor_maior_contrato_mi",
   ];
 
   const linhas: string[] = [header.join(";")];
@@ -53,8 +64,17 @@ export async function GET() {
   for (const d of decisores) {
     const contratos = d.construtora.contratos;
     const totalValor = contratos.reduce((s, c) => s + (c.valorGlobal ?? 0), 0);
-    const ativos = contratos.filter((c) => !c.vigenciaFim || c.vigenciaFim >= agora).length;
+    const ativos = contratos.filter((c) => !c.vigenciaFim || c.vigenciaFim >= agora);
     const valorMi = (totalValor / 1_000_000).toFixed(2).replace(".", ",");
+
+    // Maior contrato ativo (ja vem ordenado por valor desc); se nao tiver ativo, pega o maior dos totais
+    const principal = ativos[0] ?? contratos[0] ?? null;
+    const objetoPrincipal = principal?.objeto?.replace(/\s+/g, " ").trim().slice(0, 500) ?? "";
+    const orgaoPrincipal = principal?.orgaoContratante ?? "";
+    const municipioPrincipal = principal?.municipio ?? "";
+    const valorMaiorMi = principal?.valorGlobal
+      ? (principal.valorGlobal / 1_000_000).toFixed(2).replace(".", ",")
+      : "";
 
     linhas.push(
       [
@@ -67,8 +87,12 @@ export async function GET() {
         csvEscape(d.construtora.cnpj),
         csvEscape(d.construtora.uf),
         csvEscape(valorMi),
-        csvEscape(ativos),
+        csvEscape(ativos.length),
         csvEscape(contratos.length),
+        csvEscape(objetoPrincipal),
+        csvEscape(orgaoPrincipal),
+        csvEscape(municipioPrincipal),
+        csvEscape(valorMaiorMi),
       ].join(";")
     );
   }

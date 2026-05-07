@@ -57,7 +57,7 @@ export default async function SyncPage() {
           Gera um CSV com todos os decisores que <strong>têm telefone preenchido</strong> ({totalDecisoresComTel}{" "}
           atualmente), prontos para importar no 3C+ ou outro discador. Colunas: nome, cargo, telefone,
           e-mail, LinkedIn, empresa, CNPJ, UF, valor total em contratos (R$ mi), contratos ativos, contratos
-          totais.
+          totais, <strong>objeto/órgão/município/valor do maior contrato</strong> (gancho para a ligação).
         </p>
         <a
           href="/api/export/decisores"
