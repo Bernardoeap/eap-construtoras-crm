@@ -3,11 +3,10 @@ import { TIPO_OBRA_LABEL } from "@/lib/classify";
 
 export const dynamic = "force-dynamic";
 
-function csvEscape(v: string | number | null | undefined): string {
-  if (v == null) return "";
-  const s = String(v);
-  if (/[";\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-  return s;
+function csvText(v: string | null | undefined): string {
+  if (!v) return "";
+  const s = v.replace(/"/g, '""');
+  return `"${s}"`;
 }
 
 export async function GET() {
@@ -22,14 +21,7 @@ export async function GET() {
       construtora: {
         include: {
           contratos: {
-            select: {
-              valorGlobal: true,
-              vigenciaFim: true,
-              objeto: true,
-              orgaoContratante: true,
-              municipio: true,
-              tipoObra: true,
-            },
+            select: { valorGlobal: true, vigenciaFim: true, tipoObra: true },
             orderBy: { valorGlobal: "desc" },
           },
         },
@@ -38,69 +30,29 @@ export async function GET() {
     orderBy: { construtora: { razaoSocial: "asc" } },
   });
 
-  const header = [
-    "nome_decisor",
-    "empresa",
-    "tipo_obra",
-    "telefone",
-    "cargo",
-    "email",
-    "linkedin",
-    "cnpj",
-    "uf",
-    "valor_total_contratos_mi",
-    "qtd_contratos_ativos",
-    "qtd_contratos_total",
-    "objeto_principal",
-    "orgao_principal",
-    "municipio_principal",
-    "valor_maior_contrato_mi",
-  ];
-
-  const linhas: string[] = [header.join(";")];
+  const header = ["nome_decisor", "empresa", "tipo_obra", "telefone"].join(";");
+  const linhas: string[] = [header];
 
   for (const d of decisores) {
     const contratos = d.construtora.contratos;
-    const totalValor = contratos.reduce((s, c) => s + (c.valorGlobal ?? 0), 0);
     const ativos = contratos.filter((c) => !c.vigenciaFim || c.vigenciaFim >= agora);
-    const valorMi = (totalValor / 1_000_000).toFixed(2).replace(".", ",");
-
     const principal = ativos[0] ?? contratos[0] ?? null;
-    const tipoObraLabel = principal?.tipoObra
+
+    const tipoObra = principal?.tipoObra
       ? (TIPO_OBRA_LABEL[principal.tipoObra as keyof typeof TIPO_OBRA_LABEL] ?? principal.tipoObra)
       : "";
-    const objetoPrincipal = principal?.objeto?.replace(/\s+/g, " ").trim().slice(0, 500) ?? "";
-    const orgaoPrincipal = principal?.orgaoContratante ?? "";
-    const municipioPrincipal = principal?.municipio ?? "";
-    const valorMaiorMi = principal?.valorGlobal
-      ? (principal.valorGlobal / 1_000_000).toFixed(2).replace(".", ",")
-      : "";
+
+    // Telefone sempre entre aspas para Excel tratar como texto (evita notação científica)
+    const telefone = d.telefone ? `"${d.telefone.replace(/"/g, '')}"` : "";
 
     linhas.push(
-      [
-        csvEscape(d.nome),
-        csvEscape(d.construtora.razaoSocial),
-        csvEscape(tipoObraLabel),
-        csvEscape(d.telefone),
-        csvEscape(d.cargo),
-        csvEscape(d.email),
-        csvEscape(d.linkedin),
-        csvEscape(d.construtora.cnpj),
-        csvEscape(d.construtora.uf),
-        csvEscape(valorMi),
-        csvEscape(ativos.length),
-        csvEscape(contratos.length),
-        csvEscape(objetoPrincipal),
-        csvEscape(orgaoPrincipal),
-        csvEscape(municipioPrincipal),
-        csvEscape(valorMaiorMi),
-      ].join(";")
+      [csvText(d.nome), csvText(d.construtora.razaoSocial), csvText(tipoObra), telefone].join(";")
     );
   }
 
-  const csv = "﻿" + linhas.join("\r\n"); // BOM p/ Excel abrir UTF-8 corretamente
-
+  const csv = "﻿" + linhas.join("\r\n");
   const dataStr = new Date().toISOString().slice(0, 10);
+
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
