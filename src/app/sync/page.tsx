@@ -2,16 +2,22 @@ import { prisma } from "@/lib/db";
 import { SyncForm } from "@/components/SyncForm";
 import { RecalcFaturamentoBtn } from "@/components/RecalcFaturamentoBtn";
 import { EnrichAllBtn } from "@/components/EnrichAllBtn";
+import { BackfillContratosBtn } from "@/components/BackfillContratosBtn";
 
 export const dynamic = "force-dynamic";
 
 export default async function SyncPage() {
-  const [logs, totalDecisoresComTel] = await Promise.all([
+  const [logs, totalDecisoresComTel, contratosSemDetalhe] = await Promise.all([
     prisma.syncLog.findMany({ orderBy: { iniciadoEm: "desc" }, take: 20 }),
     prisma.decisor.count({
       where: {
         telefone: { not: null },
         construtora: { leadStatus: { not: "perdido" } },
+      },
+    }),
+    prisma.contrato.count({
+      where: {
+        OR: [{ valorGlobal: null }, { vigenciaInicio: null }, { vigenciaFim: null }],
       },
     }),
   ]);
@@ -29,6 +35,16 @@ export default async function SyncPage() {
 
       <section className="bg-white border rounded-lg p-5">
         <SyncForm />
+      </section>
+
+      <section className="bg-white border rounded-lg p-5 space-y-3">
+        <h2 className="font-semibold">Buscar valores e vigências dos contratos no PNCP</h2>
+        <p className="text-sm text-slate-600">
+          Para os contratos importados sem valor/vigência ({contratosSemDetalhe} atualmente), consulta a API
+          de detalhe do PNCP e preenche valor global, vigência início, vigência fim, modalidade e órgão. Roda
+          no navegador (~500ms por contrato).
+        </p>
+        <BackfillContratosBtn />
       </section>
 
       <section className="bg-white border rounded-lg p-5 space-y-3">
