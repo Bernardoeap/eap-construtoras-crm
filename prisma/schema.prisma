@@ -1,0 +1,121 @@
+// Prisma schema — SQLite local; pronto para trocar para Postgres/Turso via DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Construtora {
+  id                  String   @id @default(cuid())
+  cnpj                String   @unique
+  razaoSocial         String
+  nomeFantasia        String?
+  uf                  String
+  cidade              String?
+  site                String?
+  email               String?
+  telefone            String?
+  cnaePrincipal       String?
+  cnaesSecundarios    String?
+  qsa                 String?
+  capitalSocial       Float?
+  faturamentoEstimado Float?
+  faixaFaturamento    String?
+  leadStatus          String   @default("novo")
+  tags                String?
+  fonteEnriquecimento String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  contratos  Contrato[]
+  decisores  Decisor[]
+  interacoes Interacao[]
+  reunioes   Reuniao[]
+
+  @@index([uf])
+  @@index([leadStatus])
+}
+
+model Contrato {
+  id                 String    @id @default(cuid())
+  construtoraId      String
+  numeroControlePNCP String    @unique
+  numeroContrato     String?
+  objeto             String
+  valorGlobal        Float?
+  orgaoContratante   String?
+  uf                 String?
+  municipio          String?
+  modalidade         String?
+  vigenciaInicio     DateTime?
+  vigenciaFim        DateTime?
+  linkPncp           String?
+  tipoObra           String?
+  createdAt          DateTime  @default(now())
+
+  construtora Construtora @relation(fields: [construtoraId], references: [id], onDelete: Cascade)
+
+  @@index([uf])
+  @@index([tipoObra])
+  @@index([construtoraId])
+}
+
+model Decisor {
+  id            String   @id @default(cuid())
+  construtoraId String
+  nome          String
+  cargo         String?
+  email         String?
+  telefone      String?
+  linkedin      String?
+  departamento  String?
+  senioridade   String?
+  fonte         String?
+  createdAt     DateTime @default(now())
+
+  construtora Construtora @relation(fields: [construtoraId], references: [id], onDelete: Cascade)
+
+  @@index([construtoraId])
+}
+
+model Interacao {
+  id            String   @id @default(cuid())
+  construtoraId String
+  tipo          String
+  descricao     String
+  criadoEm      DateTime @default(now())
+
+  construtora Construtora @relation(fields: [construtoraId], references: [id], onDelete: Cascade)
+
+  @@index([construtoraId])
+}
+
+model Reuniao {
+  id            String   @id @default(cuid())
+  construtoraId String
+  titulo        String
+  dataHora      DateTime
+  status        String
+  notas         String?
+  createdAt     DateTime @default(now())
+
+  construtora Construtora @relation(fields: [construtoraId], references: [id], onDelete: Cascade)
+
+  @@index([construtoraId])
+  @@index([status])
+}
+
+model SyncLog {
+  id                   String    @id @default(cuid())
+  fonte                String
+  iniciadoEm           DateTime  @default(now())
+  finalizadoEm         DateTime?
+  status               String
+  registrosNovos       Int       @default(0)
+  registrosAtualizados Int       @default(0)
+  mensagem             String?
+}
