@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
-import { createClient } from "@libsql/client";
 import { importContratos } from "../data-import/import-contratos";
 import { importDecisores } from "../data-import/import-decisores";
 
@@ -12,8 +11,8 @@ function makeClient(): PrismaClient {
   console.log(`[seed] DATABASE_URL       = ${process.env.DATABASE_URL ?? "(nao setado)"}`);
   if (tursoUrl) {
     console.log("[seed] → conectando ao Turso via libSQL adapter");
-    const libsql = createClient({ url: tursoUrl, authToken: tursoToken });
-    return new PrismaClient({ adapter: new PrismaLibSQL(libsql) });
+    const adapter = new PrismaLibSQL({ url: tursoUrl, authToken: tursoToken });
+    return new PrismaClient({ adapter });
   }
   console.log("[seed] → conectando via DATABASE_URL (SQLite local)");
   return new PrismaClient();
