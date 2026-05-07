@@ -9,8 +9,8 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: str
   const construtora = await prisma.construtora.findUnique({ where: { cnpj } });
   if (!construtora) return NextResponse.json({ ok: false, erro: "Construtora não encontrada" }, { status: 404 });
 
-  const data = await enrichCNPJ(cnpj);
-  if (!data) return NextResponse.json({ ok: false, erro: "Sem retorno da BrasilAPI" }, { status: 502 });
+  const { data, fonte } = await enrichCNPJ(cnpj);
+  if (!data) return NextResponse.json({ ok: false, erro: `Sem retorno (${fonte})` }, { status: 502 });
 
   const telefones = [data.ddd_telefone_1, data.ddd_telefone_2].filter(Boolean).join(" / ");
   const cnaesSec = JSON.stringify(data.cnaes_secundarios ?? []);
@@ -30,7 +30,7 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: str
       qsa,
       email: data.email || construtora.email,
       telefone: telefones || construtora.telefone,
-      fonteEnriquecimento: "brasilapi",
+      fonteEnriquecimento: fonte,
     },
   });
 
