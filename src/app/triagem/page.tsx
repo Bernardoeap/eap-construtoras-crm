@@ -5,13 +5,12 @@ import { TriagemForm } from "@/components/TriagemForm";
 export const dynamic = "force-dynamic";
 
 export default async function TriagemPage() {
-  const [total, semCnae, foraIcp, foraIcpAmostra] = await Promise.all([
+  const [total, foraIcp, foraIcpAmostra] = await Promise.all([
     prisma.construtora.count(),
-    prisma.construtora.count({ where: { cnaePrincipal: null } }),
     prisma.construtora.count({ where: { tags: { contains: '"fora-do-icp"' } } }),
     prisma.construtora.findMany({
       where: { tags: { contains: '"fora-do-icp"' } },
-      select: { id: true, razaoSocial: true, cnaePrincipal: true, uf: true, leadStatus: true },
+      select: { id: true, razaoSocial: true, cnaePrincipal: true, uf: true, leadStatus: true, contratos: { select: { objeto: true }, take: 1 } },
       take: 30,
       orderBy: { updatedAt: "desc" },
     }),
@@ -22,27 +21,27 @@ export default async function TriagemPage() {
       <header>
         <h1 className="text-2xl font-bold">Triagem da carteira</h1>
         <p className="text-sm text-slate-500">
-          Valida cada CNPJ na Receita Federal. Quem não tem CNAE de construção (41/42/43) é marcado{" "}
-          <code className="bg-slate-100 px-1 rounded">fora-do-icp</code> e ocultado da lista.
+          Classifica cada construtora pelo <strong>objeto dos contratos</strong> que ela ganhou. Se pelo
+          menos um contrato envolver construção, reforma, ampliação, pavimentação, saneamento, edificação
+          (etc.), fica na carteira. Caso contrário, vira{" "}
+          <code className="bg-slate-100 px-1 rounded">fora-do-icp</code>.
         </p>
       </header>
 
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card label="Construtoras na base" value={total} />
-        <Card label="Sem CNAE preenchido" value={semCnae} />
         <Card label="Marcadas fora do ICP" value={foraIcp} />
       </section>
 
       <section className="bg-white border rounded-lg p-5 space-y-3">
         <h2 className="font-semibold">Validar agora</h2>
         <p className="text-sm text-slate-600">
-          A rotina consulta BrasilAPI/CNPJá para os CNPJs que ainda não têm CNAE preenchido, e re-classifica
-          quem já tem. Empresas com CNAE 41 (edifícios), 42 (infraestrutura) ou 43 (serviços especializados de
-          construção) ficam na carteira. As demais ganham tag <code className="bg-slate-100 px-1 rounded">fora-do-icp</code>{" "}
-          e status <code className="bg-slate-100 px-1 rounded">perdido</code> (se ainda estavam como{" "}
-          <code className="bg-slate-100 px-1 rounded">novo</code>).
+          Roda em segundos. Empresas que <strong>tinham</strong> tag{" "}
+          <code className="bg-slate-100 px-1 rounded">fora-do-icp</code> erroneamente (ex.: a regra antiga
+          marcou pelo CNAE) são <strong>restauradas automaticamente</strong> se algum contrato delas envolve
+          obra civil.
         </p>
-        <TriagemForm totalConstrutoras={semCnae > 0 ? semCnae : total} />
+        <TriagemForm />
       </section>
 
       {foraIcpAmostra.length > 0 && (
@@ -52,13 +51,14 @@ export default async function TriagemPage() {
           </h2>
           <ul className="divide-y text-sm">
             {foraIcpAmostra.map((c) => (
-              <li key={c.id} className="py-2 flex justify-between gap-2">
-                <Link href={`/construtoras/${c.id}`} className="hover:text-brand-600 truncate">
+              <li key={c.id} className="py-2">
+                <Link href={`/construtoras/${c.id}`} className="font-medium hover:text-brand-600 truncate block">
                   {c.razaoSocial}
                 </Link>
-                <span className="text-xs text-slate-500 whitespace-nowrap">
-                  CNAE {c.cnaePrincipal ?? "—"} · {c.uf}
-                </span>
+                <div className="text-xs text-slate-500 truncate">
+                  {c.uf} · {c.contratos[0]?.objeto?.slice(0, 120) ?? "(sem contrato)"}
+                  {(c.contratos[0]?.objeto?.length ?? 0) > 120 ? "…" : ""}
+                </div>
               </li>
             ))}
           </ul>

@@ -1,95 +1,96 @@
+// Triagem por OBJETO DOS CONTRATOS (rapida, sem chamadas externas).
+// Logica: para cada construtora, olha todos os contratos dela.
+// Se ao menos um contrato tem objeto de obra civil (construcao/reforma/etc),
+// fica na carteira. Se nenhum, marca fora-do-icp.
+// Tambem desfaz marcacoes anteriores (caso a regra tenha mudado).
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { enrichCNPJ } from "@/lib/brasilapi";
-import { cnaeEhConstrucao } from "@/lib/classify";
+import { objetoEhObra } from "@/lib/classify";
 
-export const maxDuration = 300; // ate 5 min em runtime Vercel
-
-function addTag(existing: string | null, tag: string): string {
-  const tags: string[] = existing ? JSON.parse(existing) : [];
-  if (!tags.includes(tag)) tags.push(tag);
-  return JSON.stringify(tags);
+function parseTags(s: string | null): string[] {
+  if (!s) return [];
+  try {
+    const v = JSON.parse(s);
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
 }
 
-function removeTag(existing: string | null, tag: string): string | null {
-  if (!existing) return null;
-  const tags: string[] = JSON.parse(existing).filter((t: string) => t !== tag);
+function stringifyTags(tags: string[]): string | null {
   return tags.length ? JSON.stringify(tags) : null;
 }
 
 export async function POST() {
   const log = await prisma.syncLog.create({
-    data: { fonte: "triagem-receita", status: "em_andamento" },
+    data: { fonte: "triagem-objeto", status: "em_andamento" },
   });
 
   const construtoras = await prisma.construtora.findMany({
-    select: { id: true, cnpj: true, cnaePrincipal: true, tags: true, leadStatus: true },
+    include: { contratos: { select: { objeto: true } } },
   });
 
-  let processadas = 0;
-  let construcao = 0;
+  let mantidas = 0;
   let foraIcp = 0;
-  let semRetorno = 0;
+  let semContratos = 0;
+  let restauradas = 0;
 
   try {
     for (const c of construtoras) {
-      let cnae = c.cnaePrincipal;
+      const tags = parseTags(c.tags);
+      const tinhaForaIcp = tags.includes("fora-do-icp");
 
-      // Se ja tem CNAE salvo, nao precisa chamar API
-      if (!cnae) {
-        const { data } = await enrichCNPJ(c.cnpj);
-        if (data?.cnae_fiscal) {
-          cnae = String(data.cnae_fiscal);
+      if (c.contratos.length === 0) {
+        // sem contratos: nao toca em nada
+        semContratos++;
+        continue;
+      }
+
+      const temObra = c.contratos.some((ct) => objetoEhObra(ct.objeto));
+
+      if (temObra) {
+        mantidas++;
+        // se estava marcada erroneamente como fora-do-icp, restaura
+        if (tinhaForaIcp) {
+          const novosTags = tags.filter((t) => t !== "fora-do-icp");
           await prisma.construtora.update({
             where: { id: c.id },
             data: {
-              cnaePrincipal: cnae,
-              razaoSocial: data.razao_social || undefined,
-              nomeFantasia: data.nome_fantasia || undefined,
-              email: data.email || undefined,
+              tags: stringifyTags(novosTags),
+              // se status estava 'perdido' E veio da triagem automatica, volta pra novo
+              leadStatus: c.leadStatus === "perdido" ? "novo" : c.leadStatus,
             },
           });
-        } else {
-          semRetorno++;
+          restauradas++;
         }
-        // delay anti-rate-limit
-        await new Promise((r) => setTimeout(r, 500));
-      }
-
-      processadas++;
-
-      if (cnaeEhConstrucao(cnae)) {
-        construcao++;
-        // remove tag fora-do-icp se ja tinha (caso tenha mudado de classificacao)
-        const newTags = removeTag(c.tags, "fora-do-icp");
-        if (newTags !== c.tags) {
-          await prisma.construtora.update({ where: { id: c.id }, data: { tags: newTags } });
-        }
-      } else if (cnae) {
+      } else {
         foraIcp++;
-        await prisma.construtora.update({
-          where: { id: c.id },
-          data: {
-            tags: addTag(c.tags, "fora-do-icp"),
-            // so muda status se ainda esta como "novo" (nao sobrescreve trabalho do usuario)
-            leadStatus: c.leadStatus === "novo" ? "perdido" : c.leadStatus,
-          },
-        });
+        if (!tinhaForaIcp) {
+          await prisma.construtora.update({
+            where: { id: c.id },
+            data: {
+              tags: stringifyTags([...tags, "fora-do-icp"]),
+              leadStatus: c.leadStatus === "novo" ? "perdido" : c.leadStatus,
+            },
+          });
+        }
       }
     }
+
+    const msg = `${mantidas} mantidas (têm obra) · ${foraIcp} fora do ICP (sem objeto de obra) · ${restauradas} restauradas · ${semContratos} sem contratos`;
 
     await prisma.syncLog.update({
       where: { id: log.id },
       data: {
         status: "ok",
         finalizadoEm: new Date(),
-        registrosNovos: 0,
-        registrosAtualizados: processadas,
-        mensagem: `${processadas} processadas · ${construcao} construção · ${foraIcp} fora ICP · ${semRetorno} sem retorno`,
+        registrosAtualizados: mantidas + foraIcp,
+        mensagem: msg,
       },
     });
 
-    return NextResponse.json({ ok: true, processadas, construcao, foraIcp, semRetorno });
+    return NextResponse.json({ ok: true, mantidas, foraIcp, semContratos, restauradas, mensagem: msg });
   } catch (e) {
     await prisma.syncLog.update({
       where: { id: log.id },
