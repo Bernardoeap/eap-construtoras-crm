@@ -14,25 +14,15 @@ export interface DecisorView {
   fonte?: string | null;
 }
 
-export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empresa: string }) {
+export function DecisorCard({ decisor }: { decisor: DecisorView }) {
   const [linkedin, setLinkedin] = useState(decisor.linkedin ?? "");
   const [email, setEmail] = useState(decisor.email ?? "");
   const [telefone, setTelefone] = useState(decisor.telefone ?? "");
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
 
-  // Pega so a primeira parte significativa do nome da empresa
-  const empresaCurta = empresa
-    .split(/[-,/]/)[0]
-    .replace(/\b(LTDA|S\.?A\.?|ME|EIRELI|EPP|S\/?A)\b\.?/gi, "")
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .join(" ");
-
-  const googleQuery = encodeURIComponent(`"${decisor.nome}" linkedin ${empresaCurta}`);
-  const googleUrl = `https://www.google.com/search?q=${googleQuery}`;
-  const linkedinSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(decisor.nome + " " + empresaCurta)}`;
+  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(`"${decisor.nome}" linkedin`)}`;
+  const linkedinSearchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(decisor.nome)}`;
 
   const linkedinUrl =
     linkedin && linkedin.length > 0

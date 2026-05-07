@@ -137,7 +137,7 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
           <h2 className="font-semibold mb-3">Decisores ({c.decisores.length})</h2>
           <ul className="divide-y">
             {c.decisores.map((d) => (
-              <DecisorCard key={d.id} decisor={d} empresa={c.razaoSocial} />
+              <DecisorCard key={d.id} decisor={d} />
             ))}
             {c.decisores.length === 0 && (
               <li className="py-4 text-center text-sm text-slate-500">
