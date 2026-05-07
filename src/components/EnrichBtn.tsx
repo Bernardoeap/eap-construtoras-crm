@@ -17,7 +17,12 @@ export function EnrichBtn({ cnpj }: { cnpj: string }) {
             const r = await fetch(`/api/enrich/cnpj/${encodeURIComponent(cnpj)}`, { method: "POST" });
             if (r.ok) {
               const d = await r.json();
-              setMsg(d.ok ? "Enriquecido com sucesso." : (d.erro ?? "Falhou"));
+              if (d.ok) {
+                const extra = d.decisoresCriados ? ` · ${d.decisoresCriados} sócios adicionados como decisores` : "";
+                setMsg(`Enriquecido com sucesso.${extra}`);
+              } else {
+                setMsg(d.erro ?? "Falhou");
+              }
               router.refresh();
             } else {
               setMsg("Erro ao chamar BrasilAPI.");

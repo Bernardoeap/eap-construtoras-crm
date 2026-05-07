@@ -6,6 +6,7 @@ import { StatusForm } from "@/components/StatusForm";
 import { NotaForm } from "@/components/NotaForm";
 import { ReuniaoForm, MarcarStatusBtn } from "@/components/ReuniaoForm";
 import { EnrichBtn } from "@/components/EnrichBtn";
+import { DecisorCard } from "@/components/DecisorCard";
 import { TIPO_OBRA_LABEL, FAIXAS_LABEL } from "@/lib/classify";
 import { formatBRL, formatDateBR } from "@/lib/format";
 
@@ -136,19 +137,12 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
           <h2 className="font-semibold mb-3">Decisores ({c.decisores.length})</h2>
           <ul className="divide-y">
             {c.decisores.map((d) => (
-              <li key={d.id} className="py-3">
-                <div className="font-medium">{d.nome}</div>
-                <div className="text-xs text-slate-500">{d.cargo ?? "—"} · {d.senioridade ?? ""}</div>
-                <div className="text-xs mt-1 space-x-2">
-                  {d.email && <a href={`mailto:${d.email}`} className="text-brand-600 hover:underline">{d.email}</a>}
-                  {d.telefone && <a href={`tel:${d.telefone}`} className="text-brand-600 hover:underline">{d.telefone}</a>}
-                  {d.linkedin && <a href={d.linkedin.startsWith("http") ? d.linkedin : `https://${d.linkedin}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">LinkedIn ↗</a>}
-                </div>
-              </li>
+              <DecisorCard key={d.id} decisor={d} empresa={c.razaoSocial} />
             ))}
             {c.decisores.length === 0 && (
               <li className="py-4 text-center text-sm text-slate-500">
-                Nenhum decisor mapeado. Use o Vibe Prospecting separadamente para enriquecer.
+                Nenhum decisor mapeado. Clique em <strong>"Enriquecer (BrasilAPI)"</strong> acima para puxar
+                os sócios direto da Receita Federal.
               </li>
             )}
           </ul>

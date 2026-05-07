@@ -34,5 +34,33 @@ export async function POST(_req: NextRequest, ctx: { params: Promise<{ cnpj: str
     },
   });
 
-  return NextResponse.json({ ok: true });
+  // Cria Decisor para cada socio do QSA (Receita Federal), sem duplicar
+  let decisoresCriados = 0;
+  if (data.qsa && data.qsa.length > 0) {
+    for (const socio of data.qsa) {
+      const nome = socio.nome_socio?.trim();
+      if (!nome) continue;
+
+      const ja = await prisma.decisor.findFirst({
+        where: { construtoraId: construtora.id, nome },
+      });
+      if (ja) continue;
+
+      const cargo = socio.qualificacao_socio ?? "Sócio";
+      const senioridade = /administrador|diretor|presidente/i.test(cargo) ? "c-suite" : "socio";
+
+      await prisma.decisor.create({
+        data: {
+          construtoraId: construtora.id,
+          nome,
+          cargo,
+          senioridade,
+          fonte: "receita-federal",
+        },
+      });
+      decisoresCriados++;
+    }
+  }
+
+  return NextResponse.json({ ok: true, decisoresCriados });
 }
