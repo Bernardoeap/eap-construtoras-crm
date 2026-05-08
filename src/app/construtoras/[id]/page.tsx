@@ -25,6 +25,20 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
   });
   if (!c) notFound();
 
+  // Anterior/Próxima em ordem alfabética por razão social (mesma da lista)
+  const [prev, next] = await Promise.all([
+    prisma.construtora.findFirst({
+      where: { razaoSocial: { lt: c.razaoSocial } },
+      orderBy: { razaoSocial: "desc" },
+      select: { id: true, razaoSocial: true },
+    }),
+    prisma.construtora.findFirst({
+      where: { razaoSocial: { gt: c.razaoSocial } },
+      orderBy: { razaoSocial: "asc" },
+      select: { id: true, razaoSocial: true },
+    }),
+  ]);
+
   const valorTotal = c.contratos.reduce((s, x) => s + (x.valorGlobal ?? 0), 0);
   const tags: string[] = c.tags ? JSON.parse(c.tags) : [];
   const qsa: Array<{ nome_socio?: string; qualificacao_socio?: string }> = c.qsa ? JSON.parse(c.qsa) : [];
@@ -53,7 +67,31 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
     <div className="space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <Link href="/construtoras" className="text-sm text-brand-600 hover:underline">← Construtoras</Link>
+          <div className="flex items-center gap-3 text-sm">
+            <Link href="/construtoras" className="text-brand-600 hover:underline">← Construtoras</Link>
+            {prev ? (
+              <Link
+                href={`/construtoras/${prev.id}`}
+                className="text-slate-600 hover:text-brand-600 hover:underline"
+                title={prev.razaoSocial}
+              >
+                ↑ Anterior
+              </Link>
+            ) : (
+              <span className="text-slate-300">↑ Anterior</span>
+            )}
+            {next ? (
+              <Link
+                href={`/construtoras/${next.id}`}
+                className="text-slate-600 hover:text-brand-600 hover:underline"
+                title={next.razaoSocial}
+              >
+                ↓ Próxima
+              </Link>
+            ) : (
+              <span className="text-slate-300">↓ Próxima</span>
+            )}
+          </div>
           <h1 className="text-2xl font-bold mt-1">{c.razaoSocial}</h1>
           <div className="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-2">
             <span className="font-mono">{c.cnpj}</span>
