@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LinkedInSearchPanel } from "@/components/LinkedInSearchPanel";
 import { AdicionarDecisorBtn } from "@/components/AdicionarDecisorBtn";
 import { MarcarTrabalhadaBtn } from "@/components/MarcarTrabalhadaBtn";
+import { MarcarPerdidoBtn } from "@/components/MarcarPerdidoBtn";
 import { ConfirmarDescartarBtns } from "@/components/ConfirmarDescartarBtns";
 import { TIPO_OBRA_LABEL, FAIXAS_LABEL } from "@/lib/classify";
 import { formatBRL } from "@/lib/format";
@@ -202,14 +203,21 @@ async function AbaPesquisar({ idAtual }: { idAtual?: string }) {
             <AdicionarDecisorBtn construtoraId={c.id} />
           </section>
 
-          <section className="bg-white border rounded-lg p-4 flex items-center justify-between">
-            <div className="text-sm">
-              <div className="font-medium">Não achou ninguém útil?</div>
+          <section className="bg-white border rounded-lg p-4 space-y-3">
+            <div>
+              <div className="font-medium text-sm">Não achou ninguém útil?</div>
               <div className="text-xs text-slate-500">
-                Marca como trabalhada — sai da fila.
+                Escolha o motivo: <strong>trabalhada</strong> (volta depois) ou <strong>sem perfil/perdida</strong> (descarta de vez).
               </div>
             </div>
-            <MarcarTrabalhadaBtn construtoraId={c.id} proximaId={proxima?.construtora.id} />
+            <div className="flex gap-2 flex-wrap">
+              <MarcarTrabalhadaBtn construtoraId={c.id} proximaId={proxima?.construtora.id} />
+              <MarcarPerdidoBtn
+                construtoraId={c.id}
+                proximaId={proxima?.construtora.id}
+                tab="pesquisar"
+              />
+            </div>
           </section>
         </div>
       </div>
@@ -269,7 +277,7 @@ async function AbaConfirmar({ idAtual }: { idAtual?: string }) {
       </div>
 
       <div className="bg-white border rounded-lg p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div>
             <Link href={`/construtoras/${c.id}`} className="text-xs text-brand-600 hover:underline">
               Abrir página completa →
@@ -279,6 +287,12 @@ async function AbaConfirmar({ idAtual }: { idAtual?: string }) {
               {c.cidade ? `${c.cidade}/${c.uf}` : c.uf} · {formatBRL(valorTotal)} em contratos
             </div>
           </div>
+          <MarcarPerdidoBtn
+            construtoraId={c.id}
+            proximaId={proxima?.construtora.id}
+            tab="confirmar"
+            variant="compact"
+          />
         </div>
 
         <div className="border-t pt-4">

@@ -21,6 +21,7 @@ export async function updateStatus(construtoraId: string, status: string) {
   });
   revalidatePath(`/construtoras/${construtoraId}`);
   revalidatePath("/construtoras");
+  revalidatePath("/prospeccao");
   revalidatePath("/");
 }
 
