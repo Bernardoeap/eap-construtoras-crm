@@ -87,11 +87,24 @@ export function googleUrlEmpresa(empresa: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(q)}`;
 }
 
-// Buscas com cargo — usa nome distintivo + cargo SEM aspas (match fuzzy)
+// Buscas com cargo — usa nome distintivo + cargo SEM aspas (match fuzzy).
+// Para cargos "âncora" (Diretor, CEO, Sócio, Presidente), adiciona filtro
+// titleFreeText pra forçar LinkedIn a filtrar por cargo atual = mais preciso.
+const CARGOS_ANCORA = ["Diretor", "CEO", "Sócio", "Presidente"];
+
 export function linkedinUrlPorCargo(cargo: string, empresa: string): string {
   const nome = nomeDistintivo(empresa);
   const q = `${cargo} ${nome}`;
-  return `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(q)}&origin=GLOBAL_SEARCH_HEADER`;
+  const params = new URLSearchParams({
+    keywords: q,
+    origin: "GLOBAL_SEARCH_HEADER",
+  });
+  // titleFreeText filtra cargo atual — só usa para cargos âncora pra não ficar restritivo demais
+  const isAncora = CARGOS_ANCORA.some((a) => cargo.toLowerCase().startsWith(a.toLowerCase()));
+  if (isAncora) {
+    params.set("titleFreeText", cargo);
+  }
+  return `https://www.linkedin.com/search/results/people/?${params.toString()}`;
 }
 
 export function googleUrlPorCargo(cargo: string, empresa: string): string {

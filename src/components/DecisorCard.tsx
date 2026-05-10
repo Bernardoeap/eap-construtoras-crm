@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor, toggleLinkedinContatado, confirmarDecisor } from "@/server-actions/decisores";
 import { gerarEmailMailto } from "@/lib/email-template";
+import { IcebreakerBtn } from "@/components/IcebreakerBtn";
 
 export interface DecisorView {
   id: string;
@@ -26,6 +27,8 @@ export interface EmpresaCtx {
     orgaoContratante?: string | null;
     municipio?: string | null;
     valorGlobal?: number | null;
+    vigenciaInicio?: Date | string | null;
+    vigenciaFim?: Date | string | null;
   } | null;
 }
 
@@ -191,6 +194,22 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
           </>
         )}
       </div>
+
+      {empresa && (
+        <div className="mt-2">
+          <IcebreakerBtn
+            decisorNome={decisor.nome}
+            decisorTelefone={decisor.telefone}
+            decisorLinkedin={linkedin || decisor.linkedin}
+            construtoraRazao={empresa.razaoSocial}
+            contratoObjeto={empresa.contratoPrincipal?.objeto}
+            contratoOrgao={empresa.contratoPrincipal?.orgaoContratante}
+            contratoMunicipio={empresa.contratoPrincipal?.municipio}
+            contratoVigenciaInicio={empresa.contratoPrincipal?.vigenciaInicio}
+            contratoVigenciaFim={empresa.contratoPrincipal?.vigenciaFim}
+          />
+        </div>
+      )}
 
       {editing && (
         <div className="mt-2 space-y-2 bg-slate-50 border rounded p-2">

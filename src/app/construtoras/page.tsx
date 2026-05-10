@@ -3,6 +3,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/StatusBadge";
 import { TIPO_OBRA_LABEL, FAIXAS_LABEL, STATUS_ORDEM, STATUS_LABEL } from "@/lib/classify";
 import { formatBRL } from "@/lib/format";
+import { classificarSaudeLead } from "@/lib/gatilhos";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,8 @@ interface SearchParams {
   tag?: string;
   arquivadas?: string;
   linkedin?: string;
+  valorMin?: string; // R$ em milhões
+  vigenciaMin?: string; // meses restantes
 }
 
 export default async function ConstrutorasPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -40,6 +43,23 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
   else if (linkedinFiltro === "pendente") decisoresWhere = { none: { linkedinContatado: true } };
   else if (linkedinFiltro === "sem-perfil") decisoresWhere = { none: { linkedin: { not: null } } };
 
+  // Filtro contrato — pelo menos 1 contrato com valor mínimo E vigência restante mínima
+  const valorMinMi = sp.valorMin ? parseFloat(sp.valorMin) : 0;
+  const vigenciaMinMeses = sp.vigenciaMin ? parseInt(sp.vigenciaMin, 10) : 0;
+  const valorMinReais = valorMinMi * 1_000_000;
+  const dataMinFim = vigenciaMinMeses > 0
+    ? new Date(Date.now() + vigenciaMinMeses * 30.44 * 24 * 60 * 60 * 1000)
+    : null;
+
+  const contratoFilter = (valorMinReais > 0 || dataMinFim)
+    ? {
+        some: {
+          ...(valorMinReais > 0 ? { valorGlobal: { gte: valorMinReais } } : {}),
+          ...(dataMinFim ? { OR: [{ vigenciaFim: null }, { vigenciaFim: { gte: dataMinFim } }] } : {}),
+        },
+      }
+    : undefined;
+
   const construtoras = await prisma.construtora.findMany({
     where: {
       uf: sp.uf || undefined,
@@ -47,6 +67,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
       faixaFaturamento: sp.faixa || undefined,
       tags: sp.tag ? { contains: `"${sp.tag}"` } : undefined,
       decisores: decisoresWhere,
+      contratos: contratoFilter,
       OR: sp.q
         ? [
             { razaoSocial: { contains: sp.q } },
@@ -56,7 +77,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
         : undefined,
     },
     include: {
-      contratos: { select: { valorGlobal: true, tipoObra: true } },
+      contratos: { select: { valorGlobal: true, tipoObra: true, vigenciaInicio: true, vigenciaFim: true } },
       decisores: { select: { linkedinContatado: true } },
       _count: { select: { contratos: true, decisores: true } },
     },
@@ -104,7 +125,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
         </div>
       </header>
 
-      <form className="bg-white border rounded-lg p-4 grid grid-cols-2 md:grid-cols-6 gap-3" action="/construtoras" method="get">
+      <form className="bg-white border rounded-lg p-4 grid grid-cols-2 md:grid-cols-7 gap-3" action="/construtoras" method="get">
         <input
           name="q"
           defaultValue={sp.q ?? ""}
@@ -114,36 +135,41 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
         <select name="uf" defaultValue={sp.uf ?? ""} className="px-3 py-2 border rounded-md text-sm">
           <option value="">Todas UFs</option>
           {ufsDisponiveis.map((u) => (
-            <option key={u.uf} value={u.uf}>
-              {u.uf}
-            </option>
+            <option key={u.uf} value={u.uf}>{u.uf}</option>
           ))}
         </select>
         <select name="tipo" defaultValue={sp.tipo ?? ""} className="px-3 py-2 border rounded-md text-sm">
           <option value="">Todo tipo de obra</option>
           {Object.entries(TIPO_OBRA_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
+            <option key={k} value={k}>{v}</option>
           ))}
         </select>
         <select name="status" defaultValue={sp.status ?? ""} className="px-3 py-2 border rounded-md text-sm">
           <option value="">Todos status</option>
           {STATUS_ORDEM.map((s) => (
-            <option key={s} value={s}>
-              {STATUS_LABEL[s]}
-            </option>
+            <option key={s} value={s}>{STATUS_LABEL[s]}</option>
           ))}
         </select>
         <select name="faixa" defaultValue={sp.faixa ?? ""} className="px-3 py-2 border rounded-md text-sm">
           <option value="">Toda faixa</option>
           {Object.entries(FAIXAS_LABEL).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
+            <option key={k} value={k}>{v}</option>
           ))}
         </select>
-        <button className="md:col-span-6 px-3 py-2 rounded-md bg-slate-900 text-white text-sm">
+        <select name="valorMin" defaultValue={sp.valorMin ?? ""} className="px-3 py-2 border rounded-md text-sm" title="Pelo menos 1 contrato com valor ≥">
+          <option value="">Qualquer valor</option>
+          <option value="2">≥ R$ 2M</option>
+          <option value="5">≥ R$ 5M</option>
+          <option value="10">≥ R$ 10M</option>
+          <option value="20">≥ R$ 20M</option>
+        </select>
+        <select name="vigenciaMin" defaultValue={sp.vigenciaMin ?? ""} className="px-3 py-2 border rounded-md text-sm" title="Pelo menos 1 contrato com vigência restante ≥">
+          <option value="">Qualquer vigência</option>
+          <option value="3">3+ meses restantes</option>
+          <option value="6">6+ meses restantes</option>
+          <option value="12">12+ meses restantes</option>
+        </select>
+        <button className="md:col-span-7 px-3 py-2 rounded-md bg-slate-900 text-white text-sm">
           Aplicar filtros
         </button>
       </form>
@@ -152,6 +178,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left">
             <tr>
+              <th className="px-2 py-3 font-medium" title="Saúde do lead">●</th>
               <th className="px-4 py-3 font-medium">Razão social</th>
               <th className="px-4 py-3 font-medium">UF</th>
               <th className="px-4 py-3 font-medium">Contratos</th>
@@ -164,8 +191,21 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
           <tbody>
             {filtered.map((c) => {
               const valor = c.contratos.reduce((s, x) => s + (x.valorGlobal ?? 0), 0);
+              const contratoMaisRecente = c.contratos
+                .filter((x) => x.vigenciaInicio)
+                .sort((a, b) => (b.vigenciaInicio?.getTime() ?? 0) - (a.vigenciaInicio?.getTime() ?? 0))[0];
+              const saude = classificarSaudeLead({
+                valorTotalContratos: valor,
+                contratoMaisRecente: contratoMaisRecente?.vigenciaInicio,
+              });
               return (
                 <tr key={c.id} className="border-t hover:bg-slate-50">
+                  <td className="px-2 py-3">
+                    <span
+                      className={`inline-block w-3 h-3 rounded-full ${saude.cor}`}
+                      title={saude.razao}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <Link href={`/construtoras/${c.id}`} className="font-medium hover:text-brand-600">
                       {c.razaoSocial}
@@ -189,7 +229,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-500">
+                <td colSpan={8} className="px-4 py-8 text-center text-sm text-slate-500">
                   Nenhuma construtora encontrada com esses filtros.
                 </td>
               </tr>

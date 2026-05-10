@@ -11,6 +11,7 @@ import { LinkedInSearchPanel } from "@/components/LinkedInSearchPanel";
 import { AdicionarDecisorBtn } from "@/components/AdicionarDecisorBtn";
 import { TIPO_OBRA_LABEL, FAIXAS_LABEL } from "@/lib/classify";
 import { formatBRL, formatDateBR } from "@/lib/format";
+import { calcularGatilho, classificarSaudeLead } from "@/lib/gatilhos";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,14 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
   const tags: string[] = c.tags ? JSON.parse(c.tags) : [];
   const qsa: Array<{ nome_socio?: string; qualificacao_socio?: string }> = c.qsa ? JSON.parse(c.qsa) : [];
 
+  const contratoMaisRecente = c.contratos
+    .filter((ct) => ct.vigenciaInicio)
+    .sort((a, b) => (b.vigenciaInicio?.getTime() ?? 0) - (a.vigenciaInicio?.getTime() ?? 0))[0];
+  const saude = classificarSaudeLead({
+    valorTotalContratos: valorTotal,
+    contratoMaisRecente: contratoMaisRecente?.vigenciaInicio,
+  });
+
   // Maior contrato (preferindo ativos) — usado como gancho dos e-mails
   const agora = new Date();
   const ativos = c.contratos.filter((ct) => !ct.vigenciaFim || ct.vigenciaFim >= agora);
@@ -61,6 +70,8 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
           orgaoContratante: contratoPrincipal.orgaoContratante,
           municipio: contratoPrincipal.municipio,
           valorGlobal: contratoPrincipal.valorGlobal,
+          vigenciaInicio: contratoPrincipal.vigenciaInicio,
+          vigenciaFim: contratoPrincipal.vigenciaFim,
         }
       : null,
   };
@@ -113,6 +124,13 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <span
+            className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium text-white ${saude.cor}`}
+            title={saude.razao}
+          >
+            <span className="inline-block w-2 h-2 rounded-full bg-white/80"></span>
+            {saude.saude.toUpperCase()}
+          </span>
           <StatusBadge status={c.leadStatus} />
           <StatusForm construtoraId={c.id} current={c.leadStatus} />
         </div>
@@ -154,12 +172,13 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
       </section>
 
       <section className="bg-white border rounded-lg p-5">
-        <h2 className="font-semibold mb-3">Contratos vencidos ({c.contratos.length})</h2>
+        <h2 className="font-semibold mb-3">Contratos ({c.contratos.length})</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="text-left text-slate-500">
               <tr>
                 <th className="py-2 pr-3">Objeto</th>
+                <th className="py-2 pr-3">Gatilho</th>
                 <th className="py-2 pr-3">Tipo</th>
                 <th className="py-2 pr-3">Órgão</th>
                 <th className="py-2 pr-3">UF/Mun</th>
@@ -169,23 +188,38 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
               </tr>
             </thead>
             <tbody>
-              {c.contratos.map((ct) => (
-                <tr key={ct.id} className="border-t align-top">
-                  <td className="py-2 pr-3 max-w-md">{ct.objeto}</td>
-                  <td className="py-2 pr-3">{ct.tipoObra ? TIPO_OBRA_LABEL[ct.tipoObra as keyof typeof TIPO_OBRA_LABEL] : "—"}</td>
-                  <td className="py-2 pr-3">{ct.orgaoContratante ?? "—"}</td>
-                  <td className="py-2 pr-3">{ct.uf}{ct.municipio ? ` / ${ct.municipio}` : ""}</td>
-                  <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatBRL(ct.valorGlobal)}</td>
-                  <td className="py-2 pr-3 whitespace-nowrap">{formatDateBR(ct.vigenciaInicio)} → {formatDateBR(ct.vigenciaFim)}</td>
-                  <td className="py-2 pr-3">
-                    {ct.linkPncp && (
-                      <a href={ct.linkPncp} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">PNCP ↗</a>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {c.contratos.map((ct) => {
+                const gatilho = calcularGatilho({ vigenciaInicio: ct.vigenciaInicio, vigenciaFim: ct.vigenciaFim });
+                return (
+                  <tr key={ct.id} className="border-t align-top">
+                    <td className="py-2 pr-3 max-w-md">{ct.objeto}</td>
+                    <td className="py-2 pr-3">
+                      {gatilho ? (
+                        <span
+                          className={`inline-block text-[10px] px-2 py-0.5 rounded border font-bold uppercase tracking-wider ${gatilho.cor}`}
+                          title={gatilho.descricao}
+                        >
+                          {gatilho.label} · {gatilho.mesesExecucao}m
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 pr-3">{ct.tipoObra ? TIPO_OBRA_LABEL[ct.tipoObra as keyof typeof TIPO_OBRA_LABEL] : "—"}</td>
+                    <td className="py-2 pr-3">{ct.orgaoContratante ?? "—"}</td>
+                    <td className="py-2 pr-3">{ct.uf}{ct.municipio ? ` / ${ct.municipio}` : ""}</td>
+                    <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatBRL(ct.valorGlobal)}</td>
+                    <td className="py-2 pr-3 whitespace-nowrap">{formatDateBR(ct.vigenciaInicio)} → {formatDateBR(ct.vigenciaFim)}</td>
+                    <td className="py-2 pr-3">
+                      {ct.linkPncp && (
+                        <a href={ct.linkPncp} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">PNCP ↗</a>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {c.contratos.length === 0 && (
-                <tr><td colSpan={7} className="py-4 text-center text-slate-500">Sem contratos.</td></tr>
+                <tr><td colSpan={8} className="py-4 text-center text-slate-500">Sem contratos.</td></tr>
               )}
             </tbody>
           </table>
