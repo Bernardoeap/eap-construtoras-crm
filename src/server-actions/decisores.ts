@@ -27,6 +27,37 @@ export async function updateDecisorContato(
   if (d) revalidatePath(`/construtoras/${d.construtoraId}`);
 }
 
+export async function criarDecisor(
+  construtoraId: string,
+  data: {
+    nome: string;
+    cargo?: string;
+    tier?: string;
+    linkedin?: string;
+    telefone?: string;
+    email?: string;
+  }
+) {
+  const nome = data.nome.trim();
+  if (!nome) throw new Error("Nome obrigatório");
+
+  await prisma.decisor.create({
+    data: {
+      construtoraId,
+      nome,
+      cargo: data.cargo?.trim() || null,
+      tier: data.tier?.trim() || null,
+      linkedin: data.linkedin?.trim() || null,
+      telefone: data.telefone?.trim() || null,
+      email: data.email?.trim() || null,
+      fonte: "manual",
+    },
+  });
+
+  revalidatePath(`/construtoras/${construtoraId}`);
+  revalidatePath("/construtoras");
+}
+
 export async function deleteDecisor(decisorId: string) {
   const d = await prisma.decisor.findUnique({ where: { id: decisorId }, select: { construtoraId: true } });
   await prisma.decisor.delete({ where: { id: decisorId } });

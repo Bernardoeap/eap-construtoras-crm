@@ -7,6 +7,8 @@ import { NotaForm } from "@/components/NotaForm";
 import { ReuniaoForm, MarcarStatusBtn } from "@/components/ReuniaoForm";
 import { EnrichBtn } from "@/components/EnrichBtn";
 import { DecisorCard } from "@/components/DecisorCard";
+import { LinkedInSearchPanel } from "@/components/LinkedInSearchPanel";
+import { AdicionarDecisorBtn } from "@/components/AdicionarDecisorBtn";
 import { TIPO_OBRA_LABEL, FAIXAS_LABEL } from "@/lib/classify";
 import { formatBRL, formatDateBR } from "@/lib/format";
 
@@ -190,17 +192,22 @@ export default async function ConstrutoraDetail({ params }: { params: Promise<{ 
         </div>
       </section>
 
+      <LinkedInSearchPanel empresa={c.razaoSocial} />
+
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white border rounded-lg p-5">
-          <h2 className="font-semibold mb-3">Decisores ({c.decisores.length})</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold">Decisores ({c.decisores.length})</h2>
+            <AdicionarDecisorBtn construtoraId={c.id} />
+          </div>
           <ul className="divide-y">
             {c.decisores.map((d) => (
               <DecisorCard key={d.id} decisor={d} empresa={empresaCtx} />
             ))}
             {c.decisores.length === 0 && (
               <li className="py-4 text-center text-sm text-slate-500">
-                Nenhum decisor mapeado. Clique em <strong>"Enriquecer (BrasilAPI)"</strong> acima para puxar
-                os sócios direto da Receita Federal.
+                Nenhum decisor mapeado. Use o painel acima pra buscar no LinkedIn por cargo, ou clique em
+                <strong> "Enriquecer (BrasilAPI)" </strong>para puxar os sócios da Receita Federal.
               </li>
             )}
           </ul>

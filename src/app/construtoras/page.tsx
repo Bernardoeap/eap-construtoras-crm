@@ -29,7 +29,16 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
       ? undefined
       : { not: "perdido" };
 
-  const soLinkedin = sp.linkedin === "1";
+  // linkedin: "enviado" = pelo menos 1 decisor com mensagem enviada
+  //           "pendente" = nenhum decisor com mensagem enviada
+  //           "sem-perfil" = nenhum decisor com URL LinkedIn preenchida
+  //           "1" = compatibilidade antiga (= enviado)
+  const linkedinFiltro = sp.linkedin === "1" ? "enviado" : sp.linkedin;
+
+  let decisoresWhere: object | undefined;
+  if (linkedinFiltro === "enviado") decisoresWhere = { some: { linkedinContatado: true } };
+  else if (linkedinFiltro === "pendente") decisoresWhere = { none: { linkedinContatado: true } };
+  else if (linkedinFiltro === "sem-perfil") decisoresWhere = { none: { linkedin: { not: null } } };
 
   const construtoras = await prisma.construtora.findMany({
     where: {
@@ -37,7 +46,7 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
       leadStatus: statusFilter,
       faixaFaturamento: sp.faixa || undefined,
       tags: sp.tag ? { contains: `"${sp.tag}"` } : undefined,
-      decisores: soLinkedin ? { some: { linkedinContatado: true } } : undefined,
+      decisores: decisoresWhere,
       OR: sp.q
         ? [
             { razaoSocial: { contains: sp.q } },
@@ -77,21 +86,17 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Link
-            href={soLinkedin ? "/construtoras" : "/construtoras?linkedin=1"}
-            className={`px-3 py-2 rounded-md border text-sm font-medium ${
-              soLinkedin
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-slate-700 hover:bg-slate-100"
-            }`}
-          >
-            in LinkedIn enviado
-          </Link>
+          <FiltroChip linkedin={linkedinFiltro} valor="enviado" label="✓ LinkedIn enviado" />
+          <FiltroChip linkedin={linkedinFiltro} valor="pendente" label="⏳ LinkedIn pendente" />
+          <FiltroChip linkedin={linkedinFiltro} valor="sem-perfil" label="❓ Sem perfil LinkedIn" />
           <Link
             href={mostrarArquivadas ? "/construtoras" : "/construtoras?arquivadas=1"}
             className="px-3 py-2 rounded-md border bg-white text-sm hover:bg-slate-100"
           >
             {mostrarArquivadas ? "Esconder perdidas" : "Mostrar perdidas"}
+          </Link>
+          <Link href="/prospeccao" className="px-3 py-2 rounded-md bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700">
+            🎯 Prospecção
           </Link>
           <Link href="/sync" className="px-4 py-2 rounded-md bg-brand-500 text-white text-sm font-medium hover:bg-brand-600">
             ↻ Atualizar (PNCP)
@@ -193,5 +198,28 @@ export default async function ConstrutorasPage({ searchParams }: { searchParams:
         </table>
       </div>
     </div>
+  );
+}
+
+function FiltroChip({
+  linkedin,
+  valor,
+  label,
+}: {
+  linkedin: string | undefined;
+  valor: string;
+  label: string;
+}) {
+  const ativo = linkedin === valor;
+  const href = ativo ? "/construtoras" : `/construtoras?linkedin=${valor}`;
+  return (
+    <Link
+      href={href}
+      className={`px-3 py-2 rounded-md border text-sm font-medium ${
+        ativo ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 hover:bg-slate-100"
+      }`}
+    >
+      {label}
+    </Link>
   );
 }
