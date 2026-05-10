@@ -76,6 +76,7 @@ model Decisor {
   senioridade         String?
   fonte               String?
   tier                String?
+  confirmado          Boolean  @default(true)
   linkedinContatado   Boolean  @default(false)
   linkedinContatadoEm DateTime?
   createdAt           DateTime @default(now())

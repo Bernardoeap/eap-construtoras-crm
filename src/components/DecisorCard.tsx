@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor, toggleLinkedinContatado } from "@/server-actions/decisores";
+import { updateDecisorLinkedIn, updateDecisorContato, deleteDecisor, toggleLinkedinContatado, confirmarDecisor } from "@/server-actions/decisores";
 import { gerarEmailMailto } from "@/lib/email-template";
 
 export interface DecisorView {
@@ -13,6 +13,7 @@ export interface DecisorView {
   linkedin?: string | null;
   senioridade?: string | null;
   fonte?: string | null;
+  confirmado?: boolean;
   linkedinContatado?: boolean;
   linkedinContatadoEm?: Date | null;
 }
@@ -78,8 +79,22 @@ export function DecisorCard({ decisor, empresa }: { decisor: DecisorView; empres
     });
   }
 
+  const pendente = decisor.confirmado === false;
+
   return (
-    <li className="py-3">
+    <li className={`py-3 ${pendente ? "bg-amber-50 -mx-2 px-2 rounded" : ""}`}>
+      {pendente && (
+        <div className="text-[10px] uppercase tracking-wider font-bold text-amber-700 mb-1 flex items-center gap-2">
+          ⚠ Pendente de confirmação
+          <button
+            onClick={() => start(() => confirmarDecisor(decisor.id))}
+            disabled={pending}
+            className="text-[10px] px-2 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 normal-case"
+          >
+            ✓ Confirmar real
+          </button>
+        </div>
+      )}
       <div className="flex justify-between items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="font-medium">{decisor.nome}</div>

@@ -51,11 +51,25 @@ export async function criarDecisor(
       telefone: data.telefone?.trim() || null,
       email: data.email?.trim() || null,
       fonte: "manual",
+      confirmado: false, // Pendente até usuario confirmar
     },
   });
 
   revalidatePath(`/construtoras/${construtoraId}`);
   revalidatePath("/construtoras");
+  revalidatePath("/prospeccao");
+}
+
+export async function confirmarDecisor(decisorId: string) {
+  const d = await prisma.decisor.findUnique({
+    where: { id: decisorId },
+    select: { construtoraId: true },
+  });
+  await prisma.decisor.update({ where: { id: decisorId }, data: { confirmado: true } });
+  if (d) {
+    revalidatePath(`/construtoras/${d.construtoraId}`);
+    revalidatePath("/prospeccao");
+  }
 }
 
 export async function deleteDecisor(decisorId: string) {

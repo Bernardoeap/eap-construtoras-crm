@@ -1,14 +1,22 @@
 import Link from "next/link";
+import { prisma } from "@/lib/db";
 
-const NAV = [
-  { href: "/", label: "Dashboard", icon: "□" },
-  { href: "/construtoras", label: "Construtoras", icon: "▦" },
-  { href: "/prospeccao", label: "Prospecção", icon: "🎯" },
-  { href: "/relatorios", label: "Relatórios", icon: "◷" },
-  { href: "/sync", label: "Atualizar (PNCP)", icon: "↻" },
-];
+export async function Sidebar() {
+  const aConfirmar = await prisma.construtora.count({
+    where: {
+      leadStatus: { not: "perdido" },
+      decisores: { some: { confirmado: false } },
+    },
+  });
 
-export function Sidebar() {
+  const NAV = [
+    { href: "/", label: "Dashboard", icon: "□", badge: 0 },
+    { href: "/construtoras", label: "Construtoras", icon: "▦", badge: 0 },
+    { href: "/prospeccao", label: "Prospecção", icon: "🎯", badge: aConfirmar },
+    { href: "/relatorios", label: "Relatórios", icon: "◷", badge: 0 },
+    { href: "/sync", label: "Atualizar (PNCP)", icon: "↻", badge: 0 },
+  ];
+
   return (
     <aside className="hidden md:flex flex-col w-60 border-r bg-white min-h-screen">
       <div className="px-5 py-5 border-b">
@@ -23,7 +31,12 @@ export function Sidebar() {
             className="flex items-center gap-3 px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-100"
           >
             <span className="text-base text-brand-500 w-4 text-center">{n.icon}</span>
-            <span>{n.label}</span>
+            <span className="flex-1">{n.label}</span>
+            {n.badge > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500 text-white font-bold">
+                {n.badge}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
