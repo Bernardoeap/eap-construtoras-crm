@@ -96,11 +96,13 @@ function TabLink({
 // Aba "A pesquisar" — fluxo original
 // ============================================================================
 async function AbaPesquisar({ idAtual }: { idAtual?: string }) {
+  // Construtora sai da fila SÓ quando: (a) tem decisor com LinkedIn enviado,
+  // ou (b) foi marcada como trabalhada/perdida. Pendentes ficam na fila pra
+  // você poder continuar adicionando mais decisores antes de confirmar.
   const candidatas = await prisma.construtora.findMany({
     where: {
       leadStatus: { not: "perdido" },
       decisores: { none: { linkedinContatado: true } },
-      AND: [{ decisores: { none: { confirmado: false } } }],
       interacoes: { none: { tipo: "prospeccao_linkedin" } },
     },
     include: {
@@ -109,6 +111,11 @@ async function AbaPesquisar({ idAtual }: { idAtual?: string }) {
         orderBy: { valorGlobal: "desc" },
       },
       decisores: { orderBy: { createdAt: "desc" } },
+      interacoes: {
+        where: { tipo: { in: ["linkedin", "prospeccao_linkedin", "nota"] } },
+        orderBy: { criadoEm: "desc" },
+        take: 10,
+      },
     },
   });
 
@@ -198,16 +205,92 @@ async function AbaPesquisar({ idAtual }: { idAtual?: string }) {
           <section className="bg-white border rounded-lg p-5 space-y-3">
             <h3 className="font-semibold">Adicionar decisor encontrado</h3>
             <p className="text-xs text-slate-500">
-              Achou alguém? Adicione com nome + URL. Vai pra aba <strong>A confirmar</strong> pra você revisar depois.
+              Achou alguém? Adicione com nome + URL. Você pode adicionar vários antes de seguir.
             </p>
             <AdicionarDecisorBtn construtoraId={c.id} />
           </section>
 
+          {/* Caixinha: decisores já encontrados nesta construtora */}
+          {c.decisores.length > 0 && (
+            <section className="bg-white border rounded-lg p-5 space-y-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                ✅ Decisores encontrados nesta construtora
+                <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">
+                  {c.decisores.length}
+                </span>
+              </h3>
+              <ul className="divide-y">
+                {c.decisores.map((d) => {
+                  const status = d.linkedinContatado
+                    ? { label: "✓ LinkedIn enviado", cor: "bg-blue-100 text-blue-800" }
+                    : d.confirmado
+                      ? { label: "✓ Confirmado", cor: "bg-emerald-100 text-emerald-800" }
+                      : { label: "⏳ A confirmar", cor: "bg-amber-100 text-amber-800" };
+                  return (
+                    <li key={d.id} className="py-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-sm">{d.nome}</div>
+                          {d.cargo && <div className="text-xs text-slate-500">{d.cargo}</div>}
+                          {d.linkedin && (
+                            <a
+                              href={d.linkedin.startsWith("http") ? d.linkedin : `https://${d.linkedin}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs text-brand-600 hover:underline break-all inline-block mt-0.5"
+                            >
+                              🔗 {d.linkedin.replace(/^https?:\/\/(www\.)?linkedin\.com\//, "")}
+                            </a>
+                          )}
+                        </div>
+                        <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded ${status.cor} font-medium`}>
+                          {status.label}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              {c.decisores.some((d) => !d.confirmado) && (
+                <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+                  💡 Tem {c.decisores.filter((d) => !d.confirmado).length} pendente(s). Vá na aba{" "}
+                  <Link href={`/prospeccao?tab=confirmar&id=${c.id}`} className="underline font-medium">
+                    A confirmar
+                  </Link>{" "}
+                  pra validar antes de mandar mensagem.
+                </p>
+              )}
+            </section>
+          )}
+
+          {/* Caixinha: histórico de prospecção LinkedIn nesta construtora */}
+          {c.interacoes.length > 0 && (
+            <section className="bg-white border rounded-lg p-5 space-y-3">
+              <h3 className="font-semibold flex items-center gap-2">
+                📋 Histórico de prospecção
+                <span className="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-medium">
+                  {c.interacoes.length}
+                </span>
+              </h3>
+              <ul className="divide-y text-xs">
+                {c.interacoes.map((i) => (
+                  <li key={i.id} className="py-2">
+                    <div className="text-slate-500">
+                      {new Date(i.criadoEm).toLocaleString("pt-BR")} ·{" "}
+                      <span className="font-medium text-slate-700">{i.tipo}</span>
+                    </div>
+                    <div className="text-slate-700">{i.descricao}</div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <section className="bg-white border rounded-lg p-4 space-y-3">
             <div>
-              <div className="font-medium text-sm">Não achou ninguém útil?</div>
+              <div className="font-medium text-sm">Terminou de pesquisar essa construtora?</div>
               <div className="text-xs text-slate-500">
-                Escolha o motivo: <strong>trabalhada</strong> (volta depois) ou <strong>sem perfil/perdida</strong> (descarta de vez).
+                <strong>Trabalhada</strong> → sai da fila mas mantém os decisores cadastrados. <strong>Sem perfil</strong> → arquiva como perdida.
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
